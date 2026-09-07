@@ -1,0 +1,6 @@
+.account-profile-panel>div:first-child .account-name-editor{position:static;margin-top:9px}
+.account-profile-panel>div:first-child .account-name-edit{position:absolute;top:-1px;right:0;margin:0}
+.account-profile-panel>div:first-child .account-name-edit:disabled{cursor:not-allowed;opacity:.35}
+.account-profile-panel>div:first-child .account-name-editor h2{margin:0}
+@media(max-width:920px){.account-profile-panel>div:first-child .account-name-edit{right:0}}
+.account-profile-panel>div:first-child .account-name-editor.editing{width:100%;margin-top:9px}.account-profile-panel>div:first-child .account-name-editor.editing form{display:grid;justify-items:center;gap:8px}.account-profile-panel>div:first-child .account-name-editor.editing input{width:min(210px,100%)}.account-profile-panel>div:first-child .account-name-editor.editing span{display:flex;flex-direction:row;gap:8px}.account-profile-panel>div:first-child .account-name-editor.editing span button{writing-mode:horizontal-tb;white-space:nowrap}

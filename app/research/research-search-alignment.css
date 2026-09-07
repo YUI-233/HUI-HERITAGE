@@ -1,0 +1,93 @@
+/* Align the research search area with catalog and library search. */
+.research-hero {
+  padding: 48px max(8vw, 32px) 22px;
+}
+
+.research-hero h1 {
+  font-size: clamp(34px, 4vw, 56px);
+}
+
+.research-hero > p:last-child {
+  max-width: 760px;
+  margin-top: 14px;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.research-search {
+  max-width: 700px;
+  margin-top: 20px;
+}
+
+.research-list {
+  padding-top: 0;
+}
+
+.research-filters {
+  padding-top: 0;
+  padding-bottom: 14px;
+}
+
+/* Compact academic-research cards make better use of wide screens. */
+.research-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.research-filters,
+.research-empty {
+  grid-column: 1 / -1;
+}
+
+.research-list > a {
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  min-height: 216px;
+  padding: 22px;
+  border: 1px solid #d7d0c1;
+  background: #fff;
+}
+
+.research-list > a > span {
+  padding-top: 3px;
+}
+
+.research-list h2 {
+  font-size: 24px;
+  line-height: 1.45;
+}
+
+.research-list .research-list-author {
+  margin: -2px 0 7px;
+  color: #74675b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.research-list > a div > p:last-child {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.research-list b {
+  grid-column: 2;
+  align-self: end;
+}
+
+@media (max-width: 760px) {
+  .research-hero {
+    padding: 54px 25px 22px;
+  }
+
+  .research-list {
+    grid-template-columns: 1fr;
+  }
+
+  .research-list > a {
+    min-height: 0;
+  }
+}

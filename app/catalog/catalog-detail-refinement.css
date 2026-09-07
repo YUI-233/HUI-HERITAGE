@@ -1,0 +1,99 @@
+/* Confirmed catalog detail hierarchy: title/actions, then cover and bibliography. */
+.detail-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 27px max(6vw, 28px) 30px;
+  border-top: 1px solid #d8d0c2;
+}
+.detail-intro h1 {
+  margin: 0;
+  font-size: clamp(40px, 4.2vw, 58px);
+  font-weight: 600;
+  line-height: 1.15;
+}
+.detail-intro .detail-type { margin-bottom: 9px; }
+.detail-intro .detail-actions { flex: 0 0 auto; margin: 0; }
+.detail-layout {
+  grid-template-columns: minmax(360px, .86fr) minmax(0, 1.14fr);
+  gap: 64px;
+  max-width: 1180px;
+  padding: 0 max(6vw, 28px) 38px;
+  align-items: start;
+}
+.detail-copy {
+  max-width: none;
+  padding-top: 18px;
+  border-top: 3px solid #b3332e;
+}
+.detail-copy .detail-bibliographic { margin-top: 0; }
+.detail-bibliographic,
+.detail-description { margin-top: 25px; }
+.detail-bibliographic h2,
+.detail-description h2 {
+  display: block;
+  margin: 0 0 12px;
+  color: #b3332e;
+  font: 700 11px Arial, sans-serif;
+  letter-spacing: .1em;
+}
+.detail-bibliographic dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 22px;
+  margin: 0;
+  border-top: 0;
+}
+.detail-bibliographic dl div,
+.detail-bibliographic dl div:first-child,
+.detail-bibliographic dl div:nth-last-child(-n + 2) {
+  display: block;
+  grid-column: auto !important;
+  padding: 9px 0;
+  border-bottom: 1px solid #ded8cc;
+}
+.detail-bibliographic dt { color: #887e70; font-size: 12px; }
+.detail-bibliographic dd { margin: 4px 0 0; color: #3f3932; font-size: 14px; line-height: 1.5; }
+.detail-bibliographic dl .detail-topic-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 22px;
+  grid-column: 1 / -1 !important;
+}
+.detail-topic-row dt { grid-column: 1; }
+.detail-topic-row dd { grid-column: 2 / -1; }
+.detail-description .detail-summary { margin: 0; }
+.detail-description .detail-summary::before { content: none; }
+.detail-topic-row .detail-keywords {
+  flex-wrap: nowrap;
+  margin: 0;
+  overflow: visible;
+  white-space: nowrap;
+}
+.detail-related .related-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.detail-related .related-card {
+  grid-template-columns: 96px minmax(0, 1fr);
+  min-height: 116px;
+  padding: 11px;
+}
+.detail-related .related-card > div { height: 94px; }
+.detail-related .related-card h3 { font-size: 17px; }
+
+@media (max-width: 800px) {
+  .detail-intro { display: block; padding-right: 25px; padding-left: 25px; }
+  .detail-intro .detail-actions { margin-top: 18px; }
+  .detail-layout { grid-template-columns: 1fr; gap: 32px; padding-right: 25px; padding-left: 25px; }
+  .detail-bibliographic dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .detail-related .related-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .detail-bibliographic dl { grid-template-columns: 1fr; }
+}

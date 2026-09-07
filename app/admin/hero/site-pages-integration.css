@@ -1,0 +1,187 @@
+.hero-admin-page .site-pages-editor {
+  margin-top: 48px;
+  padding-top: 42px;
+  border-top: 1px solid #d7d0c1;
+}
+
+/* These pages now have their own management entry, rather than being embedded
+   below the homepage editor. Remove the inherited divider and restore a full-width card. */
+.hero-admin-page .site-pages-editor {
+  width: 100%;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.hero-admin-page .site-pages-editor > section {
+  margin: 0;
+  padding: 30px;
+}
+
+.hero-admin-page .site-pages-editor .site-pages-actions {
+  padding-top: 2px;
+}
+
+.hero-admin-page .site-pages-editor > section {
+  max-width: none;
+  margin: 0 0 24px;
+  padding: 25px;
+}
+
+.site-pages-editor select {
+  box-sizing: border-box;
+  width: 100%;
+  border: 1px solid #bdb4a5;
+  border-radius: 2px;
+  background: #fff;
+  color: #332d28;
+  padding: 11px 12px;
+  font: inherit;
+}
+
+.site-pages-section-note {
+  margin: -8px 0 18px !important;
+  color: #625b53 !important;
+  font-size: 14px !important;
+  line-height: 1.7 !important;
+  letter-spacing: normal !important;
+}
+
+.site-pages-background-upload input {
+  border-style: dashed;
+}
+
+.site-pages-background-upload small {
+  color: #625b53;
+  font-size: 12px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.site-pages-background-preview {
+  margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid #d7d0c1;
+  background: #eee7dc;
+}
+
+.site-pages-background-preview img {
+  display: block;
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  object-position: center bottom;
+}
+
+.site-pages-footer-background-preview {
+  height: 150px;
+  background-color: #eee7dc;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.site-pages-background-position {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.site-pages-background-position label {
+  grid-template-columns: 1fr auto;
+}
+
+.site-pages-background-position input {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.site-pages-background-position small {
+  grid-column: 1 / -1;
+  color: #625b53;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.site-pages-background-position output {
+  color: #9a2f20;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.site-pages-page-background-preview {
+  position: relative;
+  height: 180px;
+  background-color: #eee7dc;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.site-page-preview-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.site-page-preview-overlay.light { background: #f8f4ec; }
+.site-page-preview-overlay.dark { background: #17201f; }
+.site-page-preview-overlay.none { background: transparent; }
+
+.site-page-preview-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 60%;
+  padding: 34px 7%;
+}
+
+.site-page-preview-copy p {
+  margin: 0 0 7px !important;
+  font: 700 9px Arial, sans-serif !important;
+  letter-spacing: .14em !important;
+}
+
+.site-page-preview-copy h3 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.site-page-preview-copy span { font-size: 12px; line-height: 1.5; }
+.site-page-preview-copy.dark { color: #1d1916; }
+.site-page-preview-copy.dark p { color: #b3332e !important; }
+.site-page-preview-copy.light { color: #fffaf2; }
+.site-page-preview-copy.light p { color: #f2c5b2 !important; }
+
+.site-pages-display-settings {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.site-pages-display-settings label {
+  grid-template-columns: 1fr auto;
+}
+
+.site-pages-display-settings select,
+.site-pages-display-settings input,
+.site-pages-display-settings small {
+  grid-column: 1 / -1;
+}
+
+.site-pages-display-settings input { width: 100%; }
+.site-pages-display-settings small { color: #625b53; font-size: 12px; font-weight: 400; }
+.site-pages-display-settings output { color: #9a2f20; font-size: 13px; font-weight: 700; }
+
+.site-pages-editor button.site-pages-secondary {
+  margin-top: 12px;
+  background: #5c6b63;
+}
+
+.site-pages-secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.site-pages-secondary-actions .site-pages-secondary {
+  margin-top: 12px;
+}

@@ -1,0 +1,68 @@
+/* Keep long artifact descriptions in the detail page, not in the browse grid. */
+.catalog-card .catalog-source + div {
+  display: none;
+}
+
+.detail-summary::before {
+  content: "详情介绍";
+  display: block;
+  margin-bottom: 10px;
+  color: #b3332e;
+  font: 700 11px Arial, sans-serif;
+  letter-spacing: .1em;
+}
+
+/* In the mixed catalogue view, every item receives the same image frame. */
+.catalog-book-grid:not(.catalog-manuscript-grid) {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 30px 24px;
+}
+
+.catalog-book-grid:not(.catalog-manuscript-grid) .catalog-card {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+}
+
+.catalog-book-grid:not(.catalog-manuscript-grid) .catalog-card > p,
+.catalog-book-grid:not(.catalog-manuscript-grid) .catalog-card > h2 {
+  width: 100%;
+  text-align: center;
+}
+
+.catalog-book-grid:not(.catalog-manuscript-grid) .catalog-image,
+.catalog-book-grid:not(.catalog-manuscript-grid) .catalog-manuscript-cover {
+  display: block;
+  width: 100%;
+  height: 220px;
+  margin: 0 0 12px;
+  background: #e9e2d6;
+}
+
+.catalog-book-grid:not(.catalog-manuscript-grid) .catalog-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.catalog-book-grid:not(.catalog-manuscript-grid) .catalog-manuscript-cover img {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: #e9e2d6;
+}
+
+@media (max-width: 500px) {
+  .catalog-book-grid:not(.catalog-manuscript-grid) {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog-book-grid:not(.catalog-manuscript-grid) .catalog-image,
+  .catalog-book-grid:not(.catalog-manuscript-grid) .catalog-manuscript-cover {
+    height: 240px;
+  }
+}

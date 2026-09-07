@@ -1,0 +1,1004 @@
+.review-workspace {
+  border: 1px solid #d7d0c1;
+  background: #fff;
+}
+
+.revision-review-section {
+  margin: 0 0 22px;
+  border: 1px solid #d7d0c1;
+  background: #fff;
+}
+
+.revision-review-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 28px 14px;
+  border-bottom: 1px solid #ded7ca;
+}
+
+.revision-review-heading p {
+  margin: 0 0 6px;
+  color: #b3332e;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.revision-review-heading h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+}
+
+.revision-review-heading button,
+.revision-card button {
+  border: 0;
+  background: #b3332e;
+  color: #fff;
+  padding: 10px 14px;
+  font: 14px "Noto Serif SC", "Songti SC", serif;
+  cursor: pointer;
+}
+
+.revision-review-heading button,
+.revision-card button.secondary {
+  background: #5c6b63;
+}
+
+.revision-filter {
+  justify-content: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #ede6db;
+}
+
+.revision-list {
+  display: grid;
+  gap: 14px;
+  padding: 18px 24px 22px;
+}
+
+.revision-card {
+  border: 1px solid #d7d0c1;
+  background: #fff;
+}
+
+.revision-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px 22px;
+}
+
+.revision-card small {
+  color: #b3332e;
+  font-size: 12px;
+}
+
+.revision-card h3 {
+  margin: 5px 0 7px;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.revision-card p {
+  margin: 0;
+  color: #5f584f;
+  font-size: 13px;
+}
+
+.revision-detail {
+  border-top: 1px solid #ded7ca;
+  padding: 18px 22px 22px;
+}
+
+.revision-field-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid #ded7ca;
+  border-left: 1px solid #ded7ca;
+}
+
+.revision-field-grid div {
+  min-height: 72px;
+  padding: 13px 14px;
+  border-right: 1px solid #ded7ca;
+  border-bottom: 1px solid #ded7ca;
+}
+
+.revision-field-grid dt {
+  margin-bottom: 8px;
+  color: #887a67;
+  font-size: 13px;
+}
+
+.revision-field-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #231f1c;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.revision-field-grid .revision-field-remark {
+  grid-column: 1 / -1;
+}
+
+.revision-field-grid .revision-field-remark dd {
+  white-space: pre-wrap;
+}
+
+.revision-field-grid a {
+  color: #b3332e;
+}
+
+.revision-decision-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 18px;
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #ded7ca;
+  background: #f7f1e8;
+}
+
+.revision-decision-panel label {
+  display: grid;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.revision-decision-panel label span {
+  color: #887a67;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.revision-decision-panel textarea {
+  min-height: 64px;
+  resize: vertical;
+  border: 1px solid #cfc5b7;
+  padding: 10px 12px;
+  font: 14px "Noto Serif SC", "Songti SC", serif;
+}
+
+.revision-decision-panel > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.revision-review-note {
+  margin-top: 12px;
+  border-left: 3px solid #b3332e;
+  background: #f7f1e8;
+  padding: 10px 12px;
+}
+
+/* Holding revision review: keep the queue as compact request rows, then expand only when reviewing. */
+.revision-review-section {
+  border-color: #d7d0c1;
+}
+
+.revision-review-heading {
+  padding: 14px 24px 10px;
+}
+
+.revision-review-heading p {
+  display: none;
+}
+
+.revision-review-heading h2 {
+  font-size: 24px;
+}
+
+.revision-filter {
+  padding: 10px 20px;
+}
+
+.revision-list {
+  gap: 10px;
+  padding: 14px 24px 18px;
+}
+
+.revision-card > header {
+  box-sizing: border-box;
+  width: 100%;
+  height: auto !important;
+  min-height: 0;
+  align-items: flex-start;
+  gap: 24px;
+  padding: 21px 22px 18px;
+}
+
+.revision-card > header > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.revision-card h3 {
+  margin: 0 0 9px;
+  font-size: 21px;
+  line-height: 1.4;
+}
+
+.revision-meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  color: #6d6258 !important;
+  font-size: 13px !important;
+  line-height: 1.65;
+}
+
+.revision-meta-line span:first-child {
+  padding: 1px 7px;
+  background: #f4e8e4;
+  color: #b3332e;
+  font-weight: 700;
+}
+
+.revision-change-summary {
+  display: table;
+  margin: 12px 0 0 !important;
+  padding: 5px 10px;
+  border-left: 3px solid #b3332e;
+  background: #f7f2e9;
+  color: #8b2e28 !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.revision-card > header > button {
+  flex: 0 0 auto;
+  min-width: 58px;
+  margin-top: 2px;
+}
+
+.revision-detail {
+  padding: 15px 18px 18px;
+}
+
+.revision-diff-panel {
+  margin: 0 0 16px;
+  overflow: hidden;
+  border: 1px solid #cfc4b4;
+  background: #fbf8f2;
+}
+
+.revision-diff-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #ded7ca;
+}
+
+.revision-diff-heading h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.revision-diff-heading span {
+  color: #b3332e;
+  font-size: 12px;
+}
+
+.revision-diff-table-head,
+.revision-diff-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.revision-diff-table-head {
+  color: #786c5d;
+  background: #f2ece2;
+  font-size: 12px;
+}
+
+.revision-diff-table-head > *,
+.revision-diff-row > * {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid #ded7ca;
+  border-bottom: 1px solid #ded7ca;
+  overflow-wrap: anywhere;
+}
+
+.revision-diff-table-head > *:last-child,
+.revision-diff-row > *:last-child {
+  border-right: 0;
+}
+
+.revision-diff-row:last-child > * {
+  border-bottom: 0;
+}
+
+.revision-diff-row > strong {
+  color: #5f584f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.revision-diff-before,
+.revision-diff-after {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.revision-diff-before {
+  color: #756d64;
+  background: #faf7f1;
+}
+
+.revision-diff-after {
+  color: #8f2d28;
+  background: #fff;
+}
+
+.revision-diff-empty {
+  padding: 13px 14px;
+}
+
+.revision-text-diff {
+  border-top: 1px solid #d8cfc0;
+  background: #fff;
+}
+
+.revision-diff-heading + .revision-text-diff {
+  border-top: 0;
+}
+
+.revision-text-diff-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #ded7ca;
+  background: #f2ece2;
+}
+
+.revision-text-diff-heading span {
+  color: #786c5d;
+  font-size: 12px;
+}
+
+.revision-text-diff-line {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  border-bottom: 1px solid #ded7ca;
+}
+
+.revision-text-diff-line > b,
+.revision-text-diff-line > p {
+  margin: 0;
+  padding: 12px 14px;
+  line-height: 1.75;
+}
+
+.revision-text-diff-line > b {
+  border-right: 1px solid #ded7ca;
+  color: #625b53;
+  font-size: 13px;
+}
+
+.revision-text-diff-line > p {
+  overflow-wrap: anywhere;
+  color: #4e4841;
+  font-size: 14px;
+}
+
+.revision-text-diff-line del,
+.revision-text-diff-line ins {
+  padding: 2px 3px;
+  text-decoration: none;
+}
+
+.revision-text-diff-line del {
+  background: #f6dfdb;
+  color: #8f2d28;
+}
+
+.revision-text-diff-line ins {
+  background: #e4efe7;
+  color: #345f48;
+}
+
+.revision-text-full summary {
+  cursor: pointer;
+  padding: 11px 14px;
+  color: #5c6b63;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.revision-text-full > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid #ded7ca;
+}
+
+.revision-text-full article {
+  min-width: 0;
+  padding: 14px;
+}
+
+.revision-text-full article + article {
+  border-left: 1px solid #ded7ca;
+}
+
+.revision-text-full article > strong {
+  color: #625b53;
+  font-size: 13px;
+}
+
+.revision-text-full article > p {
+  max-height: 320px;
+  margin: 8px 0 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #4e4841;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+@media (max-width: 760px) {
+  .revision-diff-table-head {
+    display: none;
+  }
+
+  .revision-diff-row {
+    grid-template-columns: 1fr;
+  }
+
+  .revision-diff-row > * {
+    border-right: 0;
+  }
+
+  .revision-diff-before::before {
+    content: "修改前：";
+    font-weight: 600;
+  }
+
+  .revision-diff-after::before {
+    content: "修改后：";
+    font-weight: 600;
+  }
+
+  .revision-text-diff-line {
+    grid-template-columns: 1fr;
+  }
+
+  .revision-text-diff-line > b {
+    padding-bottom: 4px;
+    border-right: 0;
+  }
+
+  .revision-text-diff-line > p {
+    padding-top: 4px;
+  }
+
+  .revision-text-full > div {
+    grid-template-columns: 1fr;
+  }
+
+  .revision-text-full article + article {
+    border-top: 1px solid #ded7ca;
+    border-left: 0;
+  }
+}
+
+.revision-field-grid div {
+  min-height: 60px;
+  padding: 10px 12px;
+}
+
+.revision-field-grid dt {
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.revision-field-grid dd {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.revision-decision-panel {
+  margin-top: 12px;
+  padding: 14px;
+  background: #fbfaf7;
+}
+
+.review-admin-page > section {
+  max-width: 1320px;
+  padding-top: 42px;
+}
+
+/* The change comparison is a self-contained review unit, so its boundary must stay visible. */
+.review-admin-page .revision-detail .revision-diff-panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none !important;
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  border: 2px solid #a99b87 !important;
+  border-right-color: #a99b87 !important;
+  border-bottom-color: #a99b87 !important;
+  background: #fffdf9;
+  box-shadow: 0 0 0 2px #f1ece2;
+}
+
+.review-workspace button {
+  border: 0;
+  background: #b3332e;
+  color: #fff;
+  padding: 10px 14px;
+  font: 14px "Noto Serif SC", "Songti SC", serif;
+  cursor: pointer;
+}
+
+.review-workspace button.secondary {
+  background: #5c6b63;
+}
+
+.review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 28px;
+  border-bottom: 1px solid #ded7ca;
+  background: #fff;
+}
+
+.review-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.review-filter button {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.review-filter button.secondary {
+  background: #e8e2d7;
+  color: #514a41;
+}
+
+.review-filter button.active {
+  background: #b3332e;
+  color: #fff;
+}
+
+.review-batch-list {
+  display: grid;
+  gap: 18px;
+  padding: 18px 24px 22px;
+}
+
+.review-batch-card {
+  overflow: hidden;
+  border: 1px solid #d7d0c1;
+  background: #fff;
+}
+
+.review-batch-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 26px;
+  border-bottom: 1px solid #e2ddd2;
+}
+
+.review-batch-summary > div {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: 18px;
+}
+
+.review-batch-summary h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-batch-summary span {
+  flex: 0 0 auto;
+  color: #625b53;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.review-batch-summary button {
+  flex: 0 0 auto;
+  min-width: 72px;
+}
+
+.review-batch-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.review-batch-actions button {
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+.review-batch-note {
+  margin: 0;
+  padding: 11px 26px;
+  border-bottom: 1px solid #e2ddd2;
+  background: #faf8f3;
+  color: #625b53;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.review-errors {
+  margin: 16px 22px 0;
+  padding: 11px 16px;
+  background: #fff1ee;
+  color: #9c302a;
+  font-size: 13px;
+}
+
+.review-record-browser {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  min-height: 480px;
+  background: #fff;
+}
+
+.review-record-list {
+  max-height: 700px;
+  overflow: auto;
+  border-right: 1px solid #d7d0c1;
+  background: #faf8f3;
+}
+
+.review-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 15px;
+  border-bottom: 1px solid #d7d0c1;
+  color: #5c5147;
+  font-size: 13px;
+}
+
+.review-list-heading span {
+  color: #8b2e28;
+}
+
+.review-record-list button {
+  display: grid;
+  width: 100%;
+  gap: 4px;
+  padding: 12px 15px;
+  border: 0;
+  border-bottom: 1px solid #e2ddd2;
+  background: transparent;
+  color: #1e1e1e;
+  text-align: left;
+  cursor: pointer;
+  font-family: "Noto Serif SC", "Songti SC", serif;
+}
+
+.review-record-list button:hover {
+  background: #f2ece2;
+}
+
+.review-record-list button.active {
+  background: #f8ebe5;
+  box-shadow: inset 3px 0 #b3332e;
+}
+
+.review-record-list small {
+  color: #8b2e28;
+  font-size: 12px;
+}
+
+.review-record-list b {
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.review-record-list span {
+  overflow: hidden;
+  color: #625b53;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.review-record-detail {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  overflow: hidden;
+  padding: 10px 24px 0;
+  background: #fff;
+}
+
+.review-record-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 38%);
+  align-items: start;
+  width: 100%;
+  gap: 18px;
+  margin: -34px 0 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #d7d0c1;
+}
+
+.review-record-title h4 {
+  min-width: 0;
+  margin: 0;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.28;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.review-record-title p {
+  min-width: 0;
+  margin: 4px 0 0;
+  color: #625b53;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow: visible;
+  text-align: right;
+  white-space: normal;
+}
+
+.review-record-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+  margin: 0;
+  border-top: 1px solid #e2ddd2;
+  border-left: 1px solid #e2ddd2;
+}
+
+.review-record-fields > div {
+  min-width: 0;
+  padding: 12px 14px 14px;
+  border-right: 1px solid #e2ddd2;
+  border-bottom: 1px solid #e2ddd2;
+  background: #fff;
+}
+
+.review-record-fields > div.field-wide {
+  grid-column: 1 / -1;
+  background: #fbfaf7;
+}
+
+.review-record-fields dt {
+  margin: 0 0 7px;
+  color: #796f63;
+  font-size: 12px;
+}
+
+.review-record-fields dd {
+  margin: 0;
+  overflow-wrap: break-word;
+  color: #1e1e1e;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.review-record-fields .field-nowrap dd {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.review-record-fields .field-wide dd {
+  max-width: 100%;
+  white-space: pre-wrap;
+}
+
+.review-record-fields a {
+  color: #8b2e28;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.review-decision-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid #d7d0c1;
+  background: #faf8f3;
+}
+
+.review-decision-panel label {
+  display: grid;
+  gap: 6px;
+  color: #514a41;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.review-decision-panel label span {
+  color: #82786c;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.review-decision-panel textarea {
+  min-height: 58px;
+  resize: vertical;
+  border: 1px solid #cfc5b7;
+  background: #fff;
+  padding: 9px;
+  font: 13px "Noto Serif SC", "Songti SC", serif;
+}
+
+.review-decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.review-decision-actions button:first-child {
+  grid-column: auto;
+}
+
+.review-decision-panel button {
+  white-space: nowrap;
+}
+
+.review-record-conclusion,
+.review-resubmit-hint {
+  margin: 14px 0 0;
+  padding: 14px 16px;
+  border: 1px solid #d7d0c1;
+  background: #faf8f3;
+  color: #5c6b63;
+  font-size: 14px;
+}
+
+.review-inline-message {
+  margin: 0;
+  padding-top: 2px;
+  font-size: 13px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.review-inline-message.success {
+  color: #5c6b63;
+}
+
+.review-inline-message.error {
+  color: #b3332e;
+}
+
+.review-inline-message.working {
+  color: #625b53;
+}
+
+.review-empty {
+  margin: 0;
+  padding: 28px;
+  color: #625b53;
+}
+
+.review-workspace > .catalog-editor-message {
+  margin: 0;
+  padding: 14px 28px;
+  border-top: 1px solid #e2ddd2;
+  color: #5c6b63;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+  .review-record-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .review-record-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .review-record-title p {
+    flex-basis: auto;
+    max-width: none;
+    text-align: left;
+  }
+}
+
+@media (max-width: 720px) {
+  .review-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .review-batch-list {
+    padding: 15px;
+  }
+
+  .review-batch-summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .review-batch-summary > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .review-batch-actions {
+    justify-content: flex-start;
+  }
+
+  .review-record-browser {
+    grid-template-columns: 1fr;
+  }
+
+  .review-record-list {
+    max-height: 240px;
+    border-right: 0;
+    border-bottom: 1px solid #d7d0c1;
+  }
+
+  .review-record-detail {
+    padding: 20px;
+  }
+
+  .review-record-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .review-decision-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .review-decision-actions {
+    min-width: 0;
+  }
+
+  .review-workspace > .catalog-editor-message {
+    padding: 14px 15px;
+  }
+}

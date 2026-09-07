@@ -1,0 +1,528 @@
+generator client {
+  provider      = "prisma-client-js"
+  // 本地交接环境为 Windows；云端部署可在 Linux 环境单独生成对应客户端。
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                               String                   @id @default(cuid())
+  email                            String                   @unique
+  role                             UserRole                 @default(MEMBER)
+  createdAt                        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  displayName                      String?                  @map("display_name")
+  passwordHash                     String?                  @map("password_hash")
+  isActive                         Boolean                  @default(true) @map("is_active")
+  reviewLane                       WorkflowLane?            @map("review_lane")
+  groupId                          String?                  @map("group_id")
+  emailVerifiedAt                  DateTime?                @map("email_verified_at")
+  passwordChangedAt                DateTime?                @map("password_changed_at")
+  reviewedArtifacts                Artifact[]               @relation("ArtifactReviewer")
+  submittedArtifacts               Artifact[]               @relation("ArtifactSubmitter")
+  reviewedBooks                    Book[]                   @relation("BookReviewer")
+  submittedBooks                   Book[]                   @relation("BookSubmitter")
+  borrowingCard                    BorrowingCard?
+  borrowingRecords                 BorrowingRecord[]
+  reviewedCatalogDeletionRequests  CatalogDeletionRequest[] @relation("CatalogDeletionReviewer")
+  submittedCatalogDeletionRequests CatalogDeletionRequest[] @relation("CatalogDeletionSubmitter")
+  emailActionTokens                EmailActionToken[]
+  reviewedImportBatches            ImportBatch[]            @relation("ImportBatchReviewer")
+  submittedImportBatches           ImportBatch[]            @relation("ImportBatchSubmitter")
+  notifications                    Notification[]
+  personalItems                    PersonalCollectionItem[]
+  reviewedPersonalItems            PersonalCollectionItem[] @relation("PersonalItemReviewer")
+  reviewedResearchReviewRequests   ResearchReviewRequest[]  @relation("ResearchReviewReviewer")
+  submittedResearchReviewRequests  ResearchReviewRequest[]  @relation("ResearchReviewSubmitter")
+  group                            UserGroup?               @relation(fields: [groupId], references: [id])
+  media                            MediaAsset[]
+  auditEvents                      AuditEvent[]
+  submittedHoldingRevisions        HoldingRevision[]         @relation("HoldingRevisionSubmitter")
+  reviewedHoldingRevisions         HoldingRevision[]         @relation("HoldingRevisionReviewer")
+
+  @@map("users")
+}
+
+model EmailActionToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  purpose   String
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, purpose, createdAt])
+  @@index([purpose, expiresAt])
+  @@map("email_action_tokens")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  kind      String
+  title     String
+  message   String
+  href      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@map("notifications")
+}
+
+model PersonalCollectionItem {
+  id                String           @id @default(cuid())
+  ownerId           String           @map("owner_id")
+  type              PersonalItemType
+  title             String
+  creator           String?
+  era               String?
+  editionOrCategory String?          @map("edition_or_category")
+  volumeCount       Int              @default(1) @map("volume_count")
+  serialNumber      String           @map("serial_number")
+  description       String?
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @default(now()) @updatedAt @map("updated_at")
+  eraDetail         String?          @map("era_detail")
+  publicationDate   String?          @map("publication_date")
+  imprintPublisher  String?          @map("imprint_publisher")
+  binding           String?
+  categories        String[]         @default([])
+  price             String?
+  status            ReviewStatus     @default(DRAFT)
+  isPublic          Boolean          @default(false) @map("is_public")
+  reviewedByUserId  String?          @map("reviewed_by_user_id")
+  reviewComment     String?          @map("review_comment")
+  reviewedAt        DateTime?        @map("reviewed_at") @db.Timestamptz(6)
+  media             MediaAsset[]
+  owner             User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  reviewedByUser    User?            @relation("PersonalItemReviewer", fields: [reviewedByUserId], references: [id])
+
+  @@unique([ownerId, serialNumber])
+  @@index([ownerId, type, createdAt])
+  @@map("personal_collection_items")
+}
+
+model UserGroup {
+  id                      String   @id @default(cuid())
+  name                    String   @unique
+  description             String?
+  permissions             String[] @default([])
+  isSystem                Boolean  @default(false) @map("is_system")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+  dailyBorrowLimitEnabled Boolean  @default(true) @map("daily_borrow_limit_enabled")
+  dailyBorrowLimit        Int      @default(5) @map("daily_borrow_limit")
+  members                 User[]
+
+  @@map("user_groups")
+}
+
+model BorrowingCard {
+  id         String   @id @default(cuid())
+  userId     String   @unique @map("user_id")
+  cardNumber String   @unique @map("card_number")
+  status     String   @default("ACTIVE")
+  issuedAt   DateTime @default(now()) @map("issued_at")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("borrowing_cards")
+}
+
+model BorrowingRecord {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  bookId     String   @map("book_id")
+  borrowedOn DateTime @map("borrowed_on") @db.Date
+  borrowedAt DateTime @default(now()) @map("borrowed_at")
+  book       Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId, borrowedOn])
+  @@index([userId, borrowedOn])
+  @@index([bookId, borrowedAt])
+  @@map("borrowing_records")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Book {
+  id                String            @id @default(cuid())
+  title             String
+  author            String?
+  dynasty           String?
+  versionType       String?           @map("version_type")
+  description       String?
+  source            String?
+  status            ReviewStatus      @default(APPROVED)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  keywords          String[]          @default([])
+  submittedByUserId String?           @map("submitted_by_user_id")
+  submittedByLane   WorkflowLane?     @map("submitted_by_lane")
+  reviewedByUserId  String?           @map("reviewed_by_user_id")
+  reviewerLane      WorkflowLane?     @map("reviewer_lane")
+  reviewComment     String?           @map("review_comment")
+  reviewedAt        DateTime?         @map("reviewed_at")
+  eraDetail         String?           @map("era_detail")
+  publicationDate   String?           @map("publication_date")
+  imprintPublisher  String?           @map("imprint_publisher")
+  binding           String?
+  volumeCount       Int               @default(1) @map("volume_count")
+  categories        String[]          @default([])
+  language          String?
+  catalogNumber     String?           @unique @map("catalog_number")
+  reviewedByUser    User?             @relation("BookReviewer", fields: [reviewedByUserId], references: [id])
+  submittedByUser   User?             @relation("BookSubmitter", fields: [submittedByUserId], references: [id])
+  borrowingRecords  BorrowingRecord[]
+  media             MediaAsset[]
+  holdings          Holding[]
+
+  @@map("books")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Artifact {
+  id                String        @id @default(cuid())
+  title             String
+  category          String
+  era               String?
+  material          String?
+  description       String?
+  source            String?
+  status            ReviewStatus  @default(APPROVED)
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  keywords          String[]      @default([])
+  submittedByUserId String?       @map("submitted_by_user_id")
+  submittedByLane   WorkflowLane? @map("submitted_by_lane")
+  reviewedByUserId  String?       @map("reviewed_by_user_id")
+  reviewerLane      WorkflowLane? @map("reviewer_lane")
+  reviewComment     String?       @map("review_comment")
+  reviewedAt        DateTime?     @map("reviewed_at")
+  catalogNumber     String?       @unique @map("catalog_number")
+  reviewedByUser    User?         @relation("ArtifactReviewer", fields: [reviewedByUserId], references: [id])
+  submittedByUser   User?         @relation("ArtifactSubmitter", fields: [submittedByUserId], references: [id])
+  media             MediaAsset[]
+  holdings          Holding[]
+
+  @@map("artifacts")
+}
+
+model CatalogDeletionRequest {
+  id                String       @id @default(cuid())
+  recordId          String       @map("record_id")
+  recordType        String       @map("record_type")
+  recordTitle       String       @map("record_title")
+  status            ReviewStatus @default(PENDING)
+  requestReason     String       @map("request_reason")
+  submittedByUserId String?      @map("submitted_by_user_id")
+  reviewedByUserId  String?      @map("reviewed_by_user_id")
+  reviewComment     String?      @map("review_comment")
+  reviewedAt        DateTime?    @map("reviewed_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  reviewedByUser    User?        @relation("CatalogDeletionReviewer", fields: [reviewedByUserId], references: [id])
+  submittedByUser   User?        @relation("CatalogDeletionSubmitter", fields: [submittedByUserId], references: [id])
+
+  @@index([recordId, recordType, status])
+  @@index([status, createdAt])
+  @@index([submittedByUserId])
+  @@map("catalog_deletion_requests")
+}
+
+model MediaAsset {
+  id                       String                  @id @default(cuid())
+  storageKey               String                  @unique @map("storage_key")
+  mimeType                 String                  @map("mime_type")
+  visibility               MediaVisibility         @default(PRIVATE)
+  bookId                   String?                 @map("book_id")
+  artifactId               String?                 @map("artifact_id")
+  uploadedById             String?                 @map("uploaded_by_id")
+  createdAt                DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  personalCollectionItemId String?                 @map("personal_collection_item_id")
+  personalCollectionItem   PersonalCollectionItem? @relation(fields: [personalCollectionItemId], references: [id], onDelete: Cascade)
+  book                     Book?                   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  artifact                 Artifact?               @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  uploadedBy               User?                   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@map("media_assets")
+}
+
+model Holding {
+  id          String           @id @default(cuid())
+  institution String
+  region      String
+  origin      CollectionOrigin
+  callNumber  String?          @map("call_number")
+  catalogUrl  String?          @map("catalog_url")
+  description String?
+  status      ReviewStatus     @default(APPROVED)
+  bookId      String?          @map("book_id")
+  artifactId  String?          @map("artifact_id")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  book        Book?            @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  artifact    Artifact?        @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  revisions   HoldingRevision[]
+
+  @@index([institution])
+  @@index([origin, region])
+  @@map("holdings")
+}
+
+model HoldingRevision {
+  id                String       @id @default(cuid())
+  holdingId         String       @map("holding_id")
+  status            ReviewStatus @default(PENDING)
+  proposedBook      Json?        @map("proposed_book")
+  proposedHolding   Json         @map("proposed_holding")
+  submittedByUserId String?      @map("submitted_by_user_id")
+  reviewedByUserId  String?      @map("reviewed_by_user_id")
+  reviewComment     String?      @map("review_comment")
+  reviewedAt        DateTime?    @map("reviewed_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at")
+  action            String       @default("UPDATE")
+  requestReason     String?      @map("request_reason")
+  holding           Holding      @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+  submittedByUser   User?        @relation("HoldingRevisionSubmitter", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedByUser    User?        @relation("HoldingRevisionReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([holdingId, status])
+  @@index([status, createdAt])
+  @@index([action, status])
+  @@index([submittedByUserId])
+  @@index([reviewedByUserId])
+  @@map("holding_revisions")
+}
+
+model ResearchArticle {
+  id               String                  @id @default(cuid())
+  title            String
+  author           String?
+  publication      String?
+  summary          String
+  category         String
+  keywords         String[]                @default([])
+  relatedRecordIds String[]                @default([]) @map("related_record_ids")
+  status           ReviewStatus            @default(APPROVED)
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  contentHtml      String                  @default("") @map("content_html")
+  publishedYear    String?                 @map("published_year")
+  volumeIssue      String?                 @map("volume_issue")
+  pages            String?
+  identifier       String?
+  affiliation      String?
+  reviewRequests   ResearchReviewRequest[]
+
+  @@index([category])
+  @@map("research_articles")
+}
+
+model ResearchReviewRequest {
+  id                String           @id @default(cuid())
+  articleId         String?          @map("article_id")
+  action            String
+  title             String
+  author            String?
+  publication       String?
+  summary           String
+  category          String
+  keywords          String[]         @default([])
+  relatedRecordIds  String[]         @default([]) @map("related_record_ids")
+  contentHtml       String           @default("") @map("content_html")
+  status            ReviewStatus     @default(DRAFT)
+  requestReason     String?          @map("request_reason")
+  submittedByUserId String?          @map("submitted_by_user_id")
+  reviewedByUserId  String?          @map("reviewed_by_user_id")
+  reviewComment     String?          @map("review_comment")
+  reviewedAt        DateTime?        @map("reviewed_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  publishedYear     String?          @map("published_year")
+  volumeIssue       String?          @map("volume_issue")
+  pages             String?
+  identifier        String?
+  affiliation       String?
+  article           ResearchArticle? @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  reviewedByUser    User?            @relation("ResearchReviewReviewer", fields: [reviewedByUserId], references: [id])
+  submittedByUser   User?            @relation("ResearchReviewSubmitter", fields: [submittedByUserId], references: [id])
+
+  @@index([articleId, status])
+  @@index([status, createdAt])
+  @@index([submittedByUserId])
+  @@map("research_review_requests")
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("site_settings")
+}
+
+model ImportBatch {
+  id                String              @id @default(cuid())
+  format            String
+  submittedBy       WorkflowLane        @map("submitted_by")
+  status            ReviewStatus        @default(PENDING)
+  totalRows         Int                 @map("total_rows")
+  validRows         Int                 @map("valid_rows")
+  sourceCsv         String              @map("source_csv")
+  reviewerLane      WorkflowLane?       @map("reviewer_lane")
+  reviewComment     String?             @map("review_comment")
+  reviewedAt        DateTime?           @map("reviewed_at") @db.Timestamptz(6)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  submittedByUserId String?             @map("submitted_by_user_id")
+  reviewedByUserId  String?             @map("reviewed_by_user_id")
+  records           ImportBatchRecord[]
+  reviewedByUser    User?               @relation("ImportBatchReviewer", fields: [reviewedByUserId], references: [id])
+  submittedByUser   User?               @relation("ImportBatchSubmitter", fields: [submittedByUserId], references: [id])
+  events            ImportBatchEvent[]
+
+  @@index([submittedByUserId])
+  @@index([reviewedByUserId])
+  @@map("import_batches")
+}
+
+model ImportBatchRecord {
+  id               String       @id @default(cuid())
+  batchId          String       @map("batch_id")
+  rowIndex         Int          @map("row_index")
+  sourceRow        Int          @map("source_row")
+  values           Json
+  status           ReviewStatus @default(PENDING)
+  reviewComment    String?      @map("review_comment")
+  reviewedByUserId String?      @map("reviewed_by_user_id")
+  reviewedAt       DateTime?    @map("reviewed_at")
+  appliedAt        DateTime?    @map("applied_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  batch            ImportBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, rowIndex])
+  @@index([batchId, status])
+  @@map("import_batch_records")
+}
+
+model ImportBatchEvent {
+  id        BigInt        @id @default(autoincrement())
+  batchId   String        @map("batch_id")
+  action    String
+  lane      WorkflowLane?
+  comment   String?
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  batch     ImportBatch   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId, createdAt], map: "import_batch_events_batch_created_idx")
+  @@map("import_batch_events")
+}
+
+model AuditEvent {
+  id         BigInt   @id @default(autoincrement())
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  action     String
+  payload    Json     @default("{}")
+  actorId    String?  @map("actor_id")
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("audit_events")
+}
+
+model CategoryRequest {
+  id                String       @id @default(cuid())
+  scope             String
+  parentCategory    String?      @map("parent_category")
+  proposedName      String       @map("proposed_name")
+  description       String?
+  requestReason     String       @map("request_reason")
+  sourceArea        String       @map("source_area")
+  sourceDraftId     String?      @map("source_draft_id")
+  status            ReviewStatus @default(PENDING)
+  submittedByUserId String?      @map("submitted_by_user_id")
+  reviewedByUserId  String?      @map("reviewed_by_user_id")
+  reviewComment     String?      @map("review_comment")
+  reviewedAt        DateTime?    @map("reviewed_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([submittedByUserId, createdAt])
+  @@map("category_requests")
+}
+
+model ManagedCategory {
+  id           String   @id @default(cuid())
+  scope        String
+  parentName   String?  @map("parent_name")
+  name         String
+  description  String?
+  isActive     Boolean  @default(true) @map("is_active")
+  mergedIntoId String?  @map("merged_into_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([scope, name])
+  @@index([scope, isActive])
+  @@map("managed_categories")
+}
+
+enum UserRole {
+  MEMBER
+  COLLECTOR
+  SUPER_ADMIN
+
+  @@map("user_role")
+}
+
+enum ReviewStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_REVISION
+  ARCHIVED
+
+  @@map("review_status")
+}
+
+enum MediaVisibility {
+  PUBLIC
+  MEMBER_ONLY
+  PRIVATE
+
+  @@map("media_visibility")
+}
+
+enum CollectionOrigin {
+  DOMESTIC
+  OVERSEAS
+  PERSONAL
+
+  @@map("collection_origin")
+}
+
+enum PersonalItemType {
+  BOOK
+  ARTIFACT
+
+  @@map("personal_item_type")
+}
+
+enum WorkflowLane {
+  A
+  B
+
+  @@map("workflow_lane")
+}

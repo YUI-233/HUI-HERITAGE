@@ -1,0 +1,62 @@
+.search-hero-admin > span {
+  max-width: 720px;
+}
+
+.search-hero-admin-grid article {
+  grid-template-columns: minmax(300px, 420px) minmax(360px, 620px);
+  justify-content: start;
+  gap: 22px;
+}
+
+.search-hero-admin-preview {
+  aspect-ratio: 3.15 / 1;
+  min-height: 0;
+}
+
+.search-hero-admin-grid article > div:last-child {
+  align-content: center;
+  max-width: 620px;
+}
+
+.home-browse-admin-preview {
+  height: auto;
+  aspect-ratio: 1.9 / 1;
+}
+
+.featured-research-admin-candidates {
+  grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+  max-height: 390px;
+}
+
+.featured-research-admin-candidates button {
+  align-content: start;
+  gap: 5px;
+  min-height: 100px;
+  padding: 13px 14px !important;
+}
+
+.featured-research-admin-candidates b {
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+@media (max-width: 820px) {
+  .search-hero-admin-grid article {
+    grid-template-columns: minmax(250px, 38%) minmax(0, 1fr);
+    gap: 18px;
+  }
+}
+
+@media (max-width: 680px) {
+  .search-hero-admin-grid article {
+    grid-template-columns: 1fr;
+  }
+
+  .search-hero-admin-preview {
+    aspect-ratio: 2.2 / 1;
+  }
+
+  .search-hero-admin-grid article > div:last-child {
+    max-width: none;
+  }
+}

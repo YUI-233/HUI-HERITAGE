@@ -1,0 +1,5 @@
+import { hasLocalAdminAccess, localAdminIsConfigured } from "../../../../lib/admin-local";
+import { previewCatalogImport } from "../../../../lib/catalog-import-preview";
+import { signedInWorkflowActor } from "../../../../lib/local-auth";
+import { isOfficialImportFile, readOfficialImportFile } from "../../../../lib/official-import-file";
+export async function POST(request: Request) { try { const actor = await signedInWorkflowActor(request, "HOLDING_WRITE"); if (!actor && !localAdminIsConfigured()) return Response.json({ message: "请先设置 ADMIN_LOCAL_TOKEN。" }, { status: 503 }); if (!actor && !hasLocalAdminAccess(request)) return Response.json({ message: "本地管理员口令无效。" }, { status: 401 }); const form = await request.formData(); const file = form.get("file"); if (!isOfficialImportFile(file)) return Response.json({ message: "请上传不超过 5 MB 的 Excel 或 CSV 文件。" }, { status: 400 }); return Response.json(previewCatalogImport(await readOfficialImportFile(file)), { headers: { "Cache-Control": "no-store" } }); } catch (error) { return Response.json({ message: error instanceof Error ? error.message : "校验失败。" }, { status: 401 }); } }

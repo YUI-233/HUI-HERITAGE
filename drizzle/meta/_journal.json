@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1787744914255,
+      "tag": "0000_redundant_nova",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787748636459,
+      "tag": "0001_fuzzy_agent_brand",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787806804374,
+      "tag": "0002_bent_madripoor",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787807077000,
+      "tag": "0003_hui_initial_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787827644785,
+      "tag": "0004_sad_medusa",
+      "breakpoints": true
+    }
+  ]
+}

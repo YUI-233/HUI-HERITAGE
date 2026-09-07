@@ -1,0 +1,31 @@
+.site-footer::after {
+  inset: 0;
+  z-index: 0;
+  width: auto;
+  height: auto;
+  background-image: var(--site-footer-background-image);
+  background-position: var(--site-footer-background-position-x) var(--site-footer-background-position-y);
+  background-size: cover;
+  background-repeat: no-repeat;
+  opacity: 0.34;
+}
+
+.site-footer-main,
+.site-footer > small {
+  position: relative;
+  z-index: 1;
+}
+
+.site-footer > small {
+  border-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+@media (max-width: 720px) {
+  .site-footer::after {
+    inset: 0;
+    width: auto;
+    opacity: 0.28;
+    background-position: var(--site-footer-background-position-x) var(--site-footer-background-position-y);
+  }
+}
