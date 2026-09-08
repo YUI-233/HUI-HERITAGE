@@ -8,7 +8,7 @@ export type PublicSection = "home" | "catalog" | "holdings" | "research" | "pers
 const links: Array<{ id: PublicSection; href: string; label: string }> = [
   { id: "home", href: "/", label: "首页" }, { id: "catalog", href: "/catalog", label: "数字化遗产" },
   { id: "holdings", href: "/holdings", label: "图书馆检索" }, { id: "research", href: "/research", label: "学术研究" },
-  { id: "personal", href: "/personal-collection", label: "个人收藏馆" },
+  { id: "personal", href: "/personal-collections", label: "个人收藏馆" },
 ];
 
 export async function PublicHeader({ active }: { active?: PublicSection }) {
