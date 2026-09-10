@@ -4,8 +4,9 @@ import { FormEvent, type CSSProperties, useEffect, useMemo, useRef, useState } f
 import { blankManuscriptMetadata, ManuscriptCategoryPicker, ManuscriptMetadataFields } from "../components/manuscript-metadata-fields";
 import { manuscriptCategoryGroups } from "../../lib/manuscript-categories";
 import { personalArtifactExamples, personalArtifactFeatureSets } from "../../lib/personal-artifact-example-data";
+import { PersonalCollectionSettings } from "./personal-collection-settings";
 
-type Section = "shelf" | "items" | "books" | "artifacts";
+type Section = "shelf" | "items" | "books" | "artifacts" | "settings";
 type ItemType = "BOOK" | "ARTIFACT";
 type PersonalItem = {
   id: string; type: ItemType; title: string; creator: string | null; era: string | null; eraDetail: string | null;
@@ -25,6 +26,7 @@ const formatAuthorWithEra = (creator?: string | null, era?: string | null) => {
 
 const navItems: Array<{ id: Section; label: string }> = [
   { id: "shelf", label: "我的收藏馆" }, { id: "books", label: "书籍管理" }, { id: "artifacts", label: "藏品管理" },
+  { id: "settings", label: "收藏馆设置" },
 ];
 const shelfGroups = [
   ["1", "经训"], ["2", "教法"], ["3", "教义"], ["4", "语言"], ["5", "历史"],
@@ -48,7 +50,7 @@ function shelfGroupId(book: PersonalItem) {
   return categoryAliases.find(([, aliases]) => aliases.some((alias) => category.includes(alias)))?.[0] ?? "other";
 }
 
-export function PersonalCollectionWorkspace({ initialSection = "shelf", initialManagementView = "table" }: { initialSection?: Section; initialManagementView?: "table" | "create" }) {
+export function PersonalCollectionWorkspace({ initialSection = "shelf", initialManagementView = "table", defaultProfileName = "我的收藏馆" }: { initialSection?: Section; initialManagementView?: "table" | "create"; defaultProfileName?: string }) {
   const [section, setSection] = useState<Section>(initialSection);
   const [items, setItems] = useState<PersonalItem[]>([]);
   const [artifactCategories, setArtifactCategories] = useState<string[]>(defaultArtifactCategories);
@@ -94,6 +96,7 @@ export function PersonalCollectionWorkspace({ initialSection = "shelf", initialM
       </>}
       {section === "books" && <ManagementPanel type="BOOK" items={books} initialView={initialManagementView} onSaved={load} onItemSaved={updateSavedItem} />}
       {section === "artifacts" && <ManagementPanel type="ARTIFACT" items={artifacts} initialView={initialManagementView} categories={artifactCategories} onCategoriesChanged={loadArtifactCategories} onSaved={load} />}
+      {section === "settings" && <PersonalCollectionSettings defaultDisplayName={defaultProfileName} items={items} />}
       {message && <p className="personal-message">{message}</p>}
       {detailBook && <PersonalBookDetail book={detailBook} onClose={() => setDetailBook(null)}/>} 
     </div>
