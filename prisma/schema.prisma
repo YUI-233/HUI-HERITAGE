@@ -39,6 +39,7 @@ model User {
   submittedResearchReviewRequests  ResearchReviewRequest[]  @relation("ResearchReviewSubmitter")
   group                            UserGroup?               @relation(fields: [groupId], references: [id])
   media                            MediaAsset[]
+  personalCollectionProfile        PersonalCollectionProfile? @relation("UserPersonalCollectionProfile")
   auditEvents                      AuditEvent[]
   submittedHoldingRevisions        HoldingRevision[]         @relation("HoldingRevisionSubmitter")
   reviewedHoldingRevisions         HoldingRevision[]         @relation("HoldingRevisionReviewer")
@@ -525,4 +526,19 @@ enum WorkflowLane {
   B
 
   @@map("workflow_lane")
+}
+
+model PersonalCollectionProfile {
+  id            String   @id @default(cuid())
+  ownerId       String   @unique @map("owner_id")
+  slug          String   @unique
+  displayName   String   @map("display_name")
+  description   String?
+  coverMediaId  String?  @map("cover_media_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  owner         User     @relation("UserPersonalCollectionProfile", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([slug])
+  @@map("personal_collection_profiles")
 }
