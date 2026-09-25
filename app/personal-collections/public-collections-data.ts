@@ -46,6 +46,15 @@ export type PublicCollectionResponse = {
   pagination: Pagination;
 };
 
+export type PublicCollectionSearchItem = PublicCollectionItem & {
+  collection: Pick<PublicCollectionSummary, "slug" | "name" | "ownerName">;
+};
+
+export type PublicCollectionSearchResponse = {
+  items: PublicCollectionSearchItem[];
+  pagination: Pagination;
+};
+
 const mockCollections: PublicCollectionSummary[] = [{
   slug: "yan-jing-shu-she",
   name: "岩境書舍",
@@ -125,4 +134,23 @@ export async function getPublicCollection(slug: string, { type, q = "", page = 1
     items: filtered.slice(start, start + safeLimit),
     pagination: { page: safePage, limit: safeLimit, total: filtered.length, totalPages },
   };
+}
+
+export async function searchPublicCollectionItems({ type, q = "", page = 1, limit = 24 }: { type?: "BOOK" | "ARTIFACT"; q?: string; page?: number; limit?: number } = {}): Promise<PublicCollectionSearchResponse> {
+  // TODO(api): replace this source with GET /api/personal-collections/items once the backend endpoint is available.
+  const term = q.trim().toLocaleLowerCase();
+  const allItems = mockCollections.flatMap((collection) => (mockItemsByCollection[collection.slug] ?? []).map((item) => ({
+    ...item,
+    collection: { slug: collection.slug, name: collection.name, ownerName: collection.ownerName },
+  })));
+  const filtered = allItems.filter((item) => {
+    const searchable = [item.title, item.creator, item.era, item.category, item.editionOrCategory, item.serialNumber, item.collection.name, item.collection.ownerName]
+      .filter(Boolean).join(" ").toLocaleLowerCase();
+    return (!type || item.type === type) && (!term || searchable.includes(term));
+  });
+  const safeLimit = Math.max(1, Math.min(48, limit));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / safeLimit));
+  const safePage = Math.max(1, Math.min(page, totalPages));
+  const start = (safePage - 1) * safeLimit;
+  return { items: filtered.slice(start, start + safeLimit), pagination: { page: safePage, limit: safeLimit, total: filtered.length, totalPages } };
 }

@@ -39,6 +39,7 @@ export default async function PublicCollectionsPage({ searchParams }: PublicColl
             <input id="collection-search" name="q" type="search" defaultValue={q} placeholder="输入收藏馆或收藏者名称" />
             <button type="submit">搜索</button>
           </div>
+          <Link className="public-item-search-entry" href="/personal-collections/search">搜索所有公开书籍与文物 →</Link>
         </form>
       </section>
 
@@ -87,4 +88,3 @@ export default async function PublicCollectionsPage({ searchParams }: PublicColl
     </main>
   </>;
 }
-
