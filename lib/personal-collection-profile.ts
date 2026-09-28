@@ -25,6 +25,9 @@ export type ProfileResponse = {
 
 // ---------- slug 生成 ----------
 
+/** 与公开路由静态段冲突的保留字，禁止作为 slug（否则会被 /api/personal-collections/items 遮蔽）。 */
+const RESERVED_SLUGS = new Set(["items"]);
+
 function slugify(input: string): string {
   return input
     .toLowerCase()
@@ -38,12 +41,13 @@ function slugify(input: string): string {
 /** 生成唯一、稳定的 slug；名称无法转写时回退到随机串。 */
 async function generateUniqueSlug(displayName: string): Promise<string> {
   const base = slugify(displayName) || "collection";
-  let candidate = base;
+  let candidate = RESERVED_SLUGS.has(base) ? `${base}-collection` : base;
   let n = 2;
-  // eslint-disable-next-line no-constant-condition
   while (true) {
-    const taken = await prisma.personalCollectionProfile.findUnique({ where: { slug: candidate } });
-    if (!taken) return candidate;
+    if (!RESERVED_SLUGS.has(candidate)) {
+      const taken = await prisma.personalCollectionProfile.findUnique({ where: { slug: candidate } });
+      if (!taken) return candidate;
+    }
     candidate = candidate.length > 50 ? `collection-${randomBytes(4).toString("hex")}` : `${base}-${n++}`;
   }
 }
@@ -297,7 +301,7 @@ export async function listPublicCollections({ q, page, limit }: PublicCollection
     .filter((c) => !needle || c.name.toLowerCase().includes(needle) || c.ownerName.toLowerCase().includes(needle));
 
   const total = candidates.length;
-  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
   const start = (page - 1) * limit;
   const pageItems = candidates.slice(start, start + limit);
 
@@ -335,6 +339,7 @@ export async function getPublicCollectionBySlug(
     name: string;
     ownerName: string;
     description: string | null;
+    cover: CollectionCover | null;
     bookCount: number;
     artifactCount: number;
     totalCount: number;
@@ -348,7 +353,7 @@ export async function getPublicCollectionBySlug(
     category: string | null;
     editionOrCategory: string | null;
     serialNumber: string;
-    cover: { mediaId: string; url: string } | null;
+    cover: CollectionCover | null;
   }>;
   pagination: { page: number; limit: number; total: number; totalPages: number };
 } | null> {
@@ -392,7 +397,7 @@ export async function getPublicCollectionBySlug(
   };
 
   const total = await prisma.personalCollectionItem.count({ where });
-  const totalPages = Math.max(1, Math.ceil(total / opts.limit));
+  const totalPages = total === 0 ? 0 : Math.ceil(total / opts.limit);
   const itemsRaw = await prisma.personalCollectionItem.findMany({
     where,
     orderBy: { updatedAt: "desc" },
@@ -421,7 +426,7 @@ export async function getPublicCollectionBySlug(
     editionOrCategory: it.editionOrCategory,
     serialNumber: it.serialNumber,
     cover: it.media[0]
-      ? { mediaId: it.media[0].id, url: PUBLIC_MEDIA_URL(it.id, it.media[0].id) }
+      ? { itemId: it.id, mediaId: it.media[0].id, url: PUBLIC_MEDIA_URL(it.id, it.media[0].id) }
       : null,
   }));
 
@@ -431,6 +436,7 @@ export async function getPublicCollectionBySlug(
       name: profile.displayName,
       ownerName: user?.displayName ?? "",
       description: profile.description,
+      cover: await resolveCollectionCover(ownerId, profile.coverMediaId),
       bookCount,
       artifactCount,
       totalCount,
@@ -438,4 +444,131 @@ export async function getPublicCollectionBySlug(
     items,
     pagination: { page: opts.page, limit: opts.limit, total, totalPages },
   };
+}
+
+// ---------- 跨收藏馆公开检索（PS-01） ----------
+
+export type PublicItemSearchQuery = {
+  q: string;
+  type?: "BOOK" | "ARTIFACT";
+  page: number;
+  limit: number;
+};
+
+export type PublicItemSearchResult = {
+  items: Array<{
+    id: string;
+    type: string;
+    title: string;
+    creator: string | null;
+    era: string | null;
+    category: string | null;
+    editionOrCategory: string | null;
+    serialNumber: string;
+    cover: CollectionCover | null;
+    collection: { slug: string; name: string; ownerName: string };
+  }>;
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+};
+
+/**
+ * 跨收藏馆检索公开书籍与文物（PS-01）。
+ * 仅返回 APPROVED + isPublic 的内容，封面图片必须是 PUBLIC。
+ * q 匹配：题名、作者／来源、年代、分类、版本、收藏编号、收藏馆名称、收藏者公开名称。
+ */
+export async function searchPublicCollectionItems(opts: PublicItemSearchQuery): Promise<PublicItemSearchResult> {
+  const needle = opts.q.trim();
+  const like = `%${needle}%`;
+  const typeFilter = opts.type
+    ? Prisma.sql`AND i."type" = ${opts.type}::personal_item_type`
+    : Prisma.empty;
+  // 收藏馆资料可能缺失（旧用户），故用 LEFT JOIN 并在 COALESCE 中回退到默认名称。
+  const searchFilter = needle
+    ? Prisma.sql`AND (
+        i."title" ILIKE ${like}
+        OR COALESCE(i."creator", '') ILIKE ${like}
+        OR COALESCE(i."era", '') ILIKE ${like}
+        OR COALESCE(i."edition_or_category", '') ILIKE ${like}
+        OR COALESCE(i."serial_number", '') ILIKE ${like}
+        OR COALESCE(array_to_string(i."categories", ' '), '') ILIKE ${like}
+        OR COALESCE(p."display_name", '') ILIKE ${like}
+        OR COALESCE(u."display_name", '') ILIKE ${like}
+      )`
+    : Prisma.empty;
+
+  const baseWhere = Prisma.sql`
+    FROM "personal_collection_items" i
+    LEFT JOIN "personal_collection_profiles" p ON p."owner_id" = i."owner_id"
+    LEFT JOIN "users" u ON u."id" = i."owner_id"
+    WHERE i."status" = 'APPROVED' AND i."is_public" = true
+    ${typeFilter}
+    ${searchFilter}
+  `;
+
+  const countRows = await prisma.$queryRaw<Array<{ total: bigint | number }>>(
+    Prisma.sql`SELECT COUNT(DISTINCT i."id") AS total ${baseWhere}`,
+  );
+  const total = Number(countRows[0]?.total ?? 0);
+  const totalPages = total === 0 ? 0 : Math.ceil(total / opts.limit);
+  const offset = (opts.page - 1) * opts.limit;
+
+  const rows = await prisma.$queryRaw<
+    Array<{
+      id: string;
+      type: string;
+      title: string;
+      creator: string | null;
+      era: string | null;
+      category: string | null;
+      edition_or_category: string | null;
+      serial_number: string;
+      media_id: string | null;
+      owner_display_name: string | null;
+      collection_slug: string | null;
+      collection_name: string | null;
+    }>
+  >(Prisma.sql`
+    SELECT t.* FROM (
+      SELECT DISTINCT ON (i."id")
+        i."id", i."type", i."title", i."creator", i."era",
+        (SELECT c.cat FROM unnest(i."categories") AS c(cat) LIMIT 1) AS "category",
+        i."edition_or_category", i."serial_number", i."updated_at",
+        m."id" AS "media_id",
+        u."display_name" AS "owner_display_name",
+        p."slug" AS "collection_slug",
+        p."display_name" AS "collection_name"
+      FROM "personal_collection_items" i
+      LEFT JOIN "personal_collection_profiles" p ON p."owner_id" = i."owner_id"
+      LEFT JOIN "users" u ON u."id" = i."owner_id"
+      LEFT JOIN "media_assets" m
+        ON m."personal_collection_item_id" = i."id" AND m."visibility" = 'PUBLIC'
+      WHERE i."status" = 'APPROVED' AND i."is_public" = true
+      ${typeFilter}
+      ${searchFilter}
+      ORDER BY i."id", m."created_at" ASC
+    ) t
+    ORDER BY t."updated_at" DESC
+    LIMIT ${opts.limit} OFFSET ${offset}
+  `);
+
+  const items = rows.map((r) => ({
+    id: r.id,
+    type: r.type,
+    title: r.title,
+    creator: r.creator,
+    era: r.era,
+    category: r.category,
+    editionOrCategory: r.edition_or_category,
+    serialNumber: r.serial_number,
+    cover: r.media_id
+      ? { itemId: r.id, mediaId: r.media_id, url: PUBLIC_MEDIA_URL(r.id, r.media_id) }
+      : null,
+    collection: {
+      slug: r.collection_slug ?? "",
+      name: r.collection_name ?? defaultDisplayName(r.owner_display_name),
+      ownerName: r.owner_display_name ?? "",
+    },
+  }));
+
+  return { items, pagination: { page: opts.page, limit: opts.limit, total, totalPages } };
 }
