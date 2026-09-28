@@ -1,6 +1,7 @@
 import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getSignedInUser } from "../../../../../../lib/local-auth";
+import { clearStaleCoverMedia } from "../../../../../../lib/personal-collection-profile";
 import { prisma } from "../../../../../../lib/prisma";
 
 const imageTypes: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
@@ -36,6 +37,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     if (!media) throw new Error("未找到该图片。");
     await prisma.mediaAsset.delete({ where: { id: media.id } });
     await unlink(path.join(process.cwd(), "uploads", media.storageKey)).catch(() => undefined);
+    await clearStaleCoverMedia(user.id, media.id);
     return Response.json({ deleted: true, ownerId: user.id });
   } catch (error) { return Response.json({ message: error instanceof Error ? error.message : "图片删除失败。" }, { status: 400 }); }
 }

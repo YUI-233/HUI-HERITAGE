@@ -2,6 +2,7 @@ import { PersonalItemType, Prisma, ReviewStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { parseCsvDocument } from "./csv";
 import { notifyUsers, publicationReviewers } from "./notifications";
+import { clearStaleCoverByItem, clearStaleCoverMedia } from "./personal-collection-profile";
 import { prisma } from "./prisma";
 
 export type PersonalItemInput = {
@@ -177,6 +178,7 @@ export async function updatePersonalItem(ownerId: string, id: string, input: Per
 }
 
 export async function deletePersonalItem(ownerId: string, id: string, type: PersonalItemType) {
+  const media = await prisma.mediaAsset.findMany({ where: { personalCollectionItemId: id }, select: { id: true } });
   const rows = await prisma.$queryRaw<PersonalItemRecord[]>(Prisma.sql`
     DELETE FROM personal_collection_items
     WHERE id = ${id} AND owner_id = ${ownerId} AND type = ${type}::personal_item_type
@@ -186,6 +188,7 @@ export async function deletePersonalItem(ownerId: string, id: string, type: Pers
       is_public AS "isPublic", review_comment AS "reviewComment", reviewed_at AS "reviewedAt", created_at AS "createdAt"
   `);
   if (!rows[0]) throw new Error("未找到可删除的个人收藏记录。");
+  await Promise.all(media.map((m) => clearStaleCoverMedia(ownerId, m.id)));
   return rows[0];
 }
 
@@ -253,6 +256,7 @@ export async function withdrawPersonalItem(ownerId: string, id: string) {
       is_public AS "isPublic", review_comment AS "reviewComment", reviewed_at AS "reviewedAt", created_at AS "createdAt"
   `);
   if (!rows[0]) throw new Error("仅审核中的公开申请可以撤回。");
+  await clearStaleCoverByItem(ownerId, id);
   return rows[0];
 }
 
@@ -270,6 +274,7 @@ export async function setPersonalItemPublic(ownerId: string, id: string, isPubli
   `);
   if (!rows[0]) throw new Error(isPublic ? "仅审核通过的记录可以公开。" : "未找到可调整的个人收藏记录。");
   await prisma.mediaAsset.updateMany({ where: { personalCollectionItemId: id }, data: { visibility: isPublic ? "PUBLIC" : "PRIVATE" } });
+  if (!isPublic) await clearStaleCoverByItem(ownerId, id);
   return rows[0];
 }
 
