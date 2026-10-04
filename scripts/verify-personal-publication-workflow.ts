@@ -33,7 +33,9 @@ async function main() {
     if (!created.ok || !item.id || item.status !== "DRAFT" || item.isPublic) throw new Error(`Draft creation failed: ${JSON.stringify(item)}`);
 
     const noPhotoApplication = await request(`/api/personal-collection/items/${item.id}/publication`, { method: "POST", headers: { "Content-Type": "application/json", cookie: authorCookie }, body: JSON.stringify({ action: "APPLY_PUBLIC" }) });
-    const noPhotoBody = await noPhotoApplication.json() as { message?: string }; if (noPhotoApplication.ok || !noPhotoBody.message?.includes("请最少上传一张图片")) throw new Error(`Photo requirement failed: ${JSON.stringify(noPhotoBody)}`);
+    const noPhotoBody = await noPhotoApplication.json() as { status?: string }; if (!noPhotoApplication.ok || noPhotoBody.status !== "PENDING") throw new Error(`No-photo application failed: ${JSON.stringify(noPhotoBody)}`);
+    const resetNoPhotoApplication = await request(`/api/personal-collection/items/${item.id}/publication`, { method: "POST", headers: { "Content-Type": "application/json", cookie: authorCookie }, body: JSON.stringify({ action: "WITHDRAW" }) });
+    if (!resetNoPhotoApplication.ok) throw new Error(`No-photo withdrawal failed: ${await resetNoPhotoApplication.text()}`);
     const noPhotoBook = await request("/api/personal-collection/items", { method: "POST", headers: { "Content-Type": "application/json", cookie: authorCookie }, body: JSON.stringify({ type: "BOOK", title: `无图片批量跳过 ${suffix}`, creator: "验收作者" }) });
     if (!noPhotoBook.ok) throw new Error(`No-photo batch record creation failed: ${await noPhotoBook.text()}`);
 
@@ -42,7 +44,7 @@ async function main() {
     const media = await upload.json() as { id?: string; message?: string }; if (!upload.ok || !media.id) throw new Error(`Private image upload failed: ${JSON.stringify(media)}`);
 
     const submitted = await request("/api/personal-collection/items/publication", { method: "POST", headers: { "Content-Type": "application/json", cookie: authorCookie }, body: JSON.stringify({ action: "APPLY_BOOKS" }) });
-    const submittedBody = await submitted.json() as { submitted?: number; skippedWithoutImage?: number; reviewersNotified?: number }; if (!submitted.ok || submittedBody.submitted !== 1 || submittedBody.skippedWithoutImage !== 1 || !submittedBody.reviewersNotified) throw new Error(`Batch publication request failed: ${JSON.stringify(submittedBody)}`);
+    const submittedBody = await submitted.json() as { submitted?: number; skippedWithoutImage?: number; reviewersNotified?: number }; if (!submitted.ok || submittedBody.submitted !== 2 || submittedBody.skippedWithoutImage !== 0 || !submittedBody.reviewersNotified) throw new Error(`Batch publication request failed: ${JSON.stringify(submittedBody)}`);
     const reviewerNotices = await request("/api/notifications", { headers: { cookie: reviewerCookie } }); const reviewerNoticeBody = await reviewerNotices.json() as { unreadCount?: number }; if (!reviewerNotices.ok || !reviewerNoticeBody.unreadCount) throw new Error("Reviewer did not receive the publication notification.");
     const beforeApproval = await request(`/api/personal-collection/public/${item.id}`); if (beforeApproval.status !== 404) throw new Error("Pending item was publicly readable.");
 
@@ -70,7 +72,7 @@ async function main() {
     const hidden = await request(`/api/personal-collection/items/${item.id}/publication`, { method: "POST", headers: { "Content-Type": "application/json", cookie: authorCookie }, body: JSON.stringify({ action: "SET_PRIVATE" }) });
     if (!hidden.ok) throw new Error("Hide action failed.");
     const hiddenItem = await request(`/api/personal-collection/public/${item.id}`); if (hiddenItem.status !== 404) throw new Error("Hidden item remained publicly readable.");
-    console.log("personal_publication_ok=photo-required,batch-skips-no-photo,private-image,batch-apply,review-notice,review-image,withdraw,single-apply,supplement-notice,peer-review,auto-public,holdings-search,public-image,withdraw-public");
+    console.log("personal_publication_ok=no-photo-application,batch-includes-no-photo,private-image,batch-apply,review-notice,review-image,withdraw,single-apply,supplement-notice,peer-review,auto-public,holdings-search,public-image,withdraw-public");
   } finally {
     await prisma.user.deleteMany({ where: { email: { in: [authorEmail, reviewerEmail] } } });
     if (groupId) await prisma.userGroup.delete({ where: { id: groupId } }).catch(() => undefined);

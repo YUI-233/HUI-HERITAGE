@@ -61,10 +61,18 @@ export async function requestResearchDeletion(articleId: string, reason: string,
   await notifyUsers(await researchReviewers(userId), { kind: "RESEARCH_DELETE_PENDING", title: "有研究资料删除申请待审核", message: `《${article.title}》申请删除。`, href: "/admin/research-review" }); return request;
 }
 export async function listResearchRequestsForReview(reviewerId: string) {
-  const requests = await prisma.researchReviewRequest.findMany({ where: { status: "PENDING", submittedByUserId: { not: reviewerId } }, orderBy: { createdAt: "asc" }, include: { submittedByUser: { select: { displayName: true, email: true } } } });
+  const requests = await prisma.researchReviewRequest.findMany({ where: { status: "PENDING" }, orderBy: { createdAt: "asc" }, include: { submittedByUser: { select: { displayName: true, email: true } } } });
   const affiliations = await rawQuery<Array<{ id: string; affiliation: string | null }>>("SELECT id, affiliation FROM research_review_requests WHERE status='PENDING'");
   const affiliationById = new Map(affiliations.map((item) => [item.id, item.affiliation]));
-  return requests.map((request) => ({ ...request, affiliation: affiliationById.get(request.id) ?? null }));
+  const articleIds = [...new Set(requests.filter((request) => request.action === "UPDATE" && request.articleId).map((request) => request.articleId!))];
+  const originals = articleIds.length ? await prisma.researchArticle.findMany({ where: { id: { in: articleIds } } }) : [];
+  const originalById = new Map(originals.map((article) => [article.id, article]));
+  return requests.map((request) => ({
+    ...request,
+    affiliation: affiliationById.get(request.id) ?? null,
+    canReview: request.submittedByUserId !== reviewerId,
+    original: request.action === "UPDATE" && request.articleId ? originalById.get(request.articleId) ?? null : null,
+  }));
 }
 export async function countPendingResearchReviewsForReviewer(userId: string) {
   try { const delegate = requestDelegate(); return delegate ? await delegate.count({ where: { status: "PENDING", submittedByUserId: { not: userId } } }) : Number((await rawQuery<Array<{ count: bigint }>>(`SELECT COUNT(*)::bigint AS count FROM research_review_requests WHERE status='PENDING' AND submitted_by_user_id <> $1`, userId))[0]?.count ?? 0); }

@@ -594,7 +594,7 @@ test("personal collection publication uses peer review, notifications, and autom
   assert.match(schema, /reviewedByUserId/);
   assert.match(repository, /submitPersonalItem/);
   assert.match(repository, /submitPersonalBooks/);
-  assert.match(repository, /请最少上传一张图片/);
+  assert.doesNotMatch(repository, /请最少上传一张图片/);
   assert.match(repository, /skippedWithoutImage/);
   assert.match(repository, /withdrawPersonalItem/);
   assert.match(repository, /setPersonalItemPublic/);

@@ -4,3 +4,37 @@
 .research-review-metadata .research-review-keywords{display:flex;grid-column:1/-1;gap:12px;align-items:baseline;padding:12px 16px!important;border-bottom:1px solid #e2ddd2}.research-review-metadata .research-review-keywords dt{display:block;flex:none;box-sizing:content-box;margin:0!important;padding:0!important;border:0!important;text-align:left!important}.research-review-metadata .research-review-keywords dd{display:block;box-sizing:content-box;grid-column:auto;margin:0!important;padding:0!important;border:0!important;text-align:left!important}@media(max-width:760px){.research-review-metadata .research-review-keywords{display:flex;flex-direction:column;gap:3px;padding:12px 0!important}}
 .research-review-metadata .research-review-keywords{padding-left:calc(16.6667% - 18px)!important}
 @media(max-width:760px){.research-review-metadata .research-review-keywords{padding-left:0!important}}
+.research-comparison h3{margin:0 0 6px;font-size:21px}.research-comparison-note{margin:0 0 18px;color:#6d6258;font-size:13px;line-height:1.7}.research-comparison-fields{border-top:1px solid #e2ddd2}.research-comparison-field{padding:16px 0;border-bottom:1px solid #e2ddd2}.research-comparison-field h4,.research-comparison-body-heading{margin:0 0 10px;color:#514a41;font-size:14px}.research-comparison-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.research-comparison-field p{min-width:0;margin:0;padding:12px 15px;overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.7}.research-comparison-field p:first-child{background:#f5f2ec}.research-comparison-field p:last-child{background:#fff2e9}.research-comparison-field small{display:block;margin-bottom:5px;color:#74695e;font-size:12px;font-weight:700}.research-comparison-field span{display:block}.research-comparison-body-heading{margin:22px 0 10px}.research-comparison-articles section{min-width:0}.research-comparison-articles h5{margin:0;padding:10px 14px;background:#eee9df;font-size:13px}.research-comparison-articles section:last-child h5{background:#f7e5d7}.research-comparison-articles .research-review-content{height:380px;box-sizing:border-box;max-height:none;overflow:auto;overflow-wrap:anywhere}.research-comparison-unchanged,.research-comparison-unavailable{padding:14px;background:#f5f2ec;color:#655b51;line-height:1.7}.research-comparison-unavailable{border-left:3px solid #a2413b}@media(max-width:760px){.research-comparison-pair{grid-template-columns:1fr}.research-comparison-articles .research-review-content{height:auto;max-height:380px}}
+
+/* The admin shell styles every section as a page container. Nested review
+   sections are content panels and must not inherit its wide padding. */
+.catalog-admin-page .review-desk {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+.catalog-admin-page .review-card,
+.catalog-admin-page .research-review-card-body { min-width: 0; }
+.catalog-admin-page .research-comparison,
+.catalog-admin-page .research-comparison section {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+.research-comparison-articles > section {
+  min-width: 0;
+  border: 1px solid #ddd3c3;
+  background: #fbfaf7;
+}
+.research-comparison-articles .research-review-content {
+  width: 100%;
+  border: 0;
+}
+@media (max-width: 900px) {
+  .research-comparison-pair { grid-template-columns: minmax(0, 1fr); }
+  .research-comparison-articles .research-review-content { height: auto; max-height: 380px; }
+}
+@media (max-width: 760px) {
+  .research-review-card-body { padding-left: 19px; padding-right: 19px; }
+}

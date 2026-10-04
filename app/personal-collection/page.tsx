@@ -1,5 +1,6 @@
 import "../admin/catalog/catalog-admin.css";
 import "./personal-collection.css";
+import "./artifact-visibility.css";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSignedInUser } from "../../lib/local-auth";

@@ -56,20 +56,11 @@ export function PersonalCollectionWorkspace({ initialSection = "shelf", initialM
   const [artifactCategories, setArtifactCategories] = useState<string[]>(defaultArtifactCategories);
   const [detailBook, setDetailBook] = useState<PersonalItem | null>(null);
   const [message, setMessage] = useState("正在读取个人收藏……");
-  const sampleSeedAttempted = useRef(false);
   const load = async () => {
     const response = await fetch("/api/personal-collection/items", { cache: "no-store" });
     const body = await response.json();
     if (!response.ok) return setMessage(body.message ?? "无法读取个人收藏。");
     setItems(body); setMessage("");
-    const exampleCount = body.filter((item: PersonalItem) => item.type === "ARTIFACT" && item.title.startsWith("示例｜")).length;
-    if (!sampleSeedAttempted.current && exampleCount < personalArtifactExamples.length) {
-      sampleSeedAttempted.current = true;
-      const seeded = await fetch("/api/personal-collection/artifact-examples", { method: "POST" });
-      const result = await seeded.json().catch(() => ({}));
-      if (seeded.ok && result.created) return load();
-      if (!seeded.ok) setMessage(result.message ?? "示例素材暂未加入，可在“藏品管理”中重试。");
-    }
   };
   const loadArtifactCategories = async () => {
     const response = await fetch("/api/personal-collection/artifact-categories", { cache: "no-store" });
@@ -92,7 +83,7 @@ export function PersonalCollectionWorkspace({ initialSection = "shelf", initialM
           <button type="button" role="tab" aria-selected={section === "shelf"} className={section === "shelf" ? "active" : ""} onClick={() => setSection("shelf")}>我的书架</button>
           <button type="button" role="tab" aria-selected={section === "items"} className={section === "items" ? "active" : ""} onClick={() => setSection("items")}>我的藏品</button>
         </div>
-        {section === "shelf" ? <ShelfPanel books={books} onOpen={setDetailBook} /> : <ItemsPanel artifacts={artifacts} categories={artifactCategories} />}
+        {section === "shelf" ? <ShelfPanel books={books} onOpen={setDetailBook} /> : <ItemsPanel artifacts={artifacts} categories={artifactCategories} onSaved={load} />}
       </>}
       {section === "books" && <ManagementPanel type="BOOK" items={books} initialView={initialManagementView} onSaved={load} onItemSaved={updateSavedItem} />}
       {section === "artifacts" && <ManagementPanel type="ARTIFACT" items={artifacts} initialView={initialManagementView} categories={artifactCategories} onCategoriesChanged={loadArtifactCategories} onSaved={load} />}
@@ -125,7 +116,8 @@ function ShelfPanel({ books, onOpen }: { books: PersonalItem[]; onOpen: (book: P
         <aside className="shelf-category-sign"><strong>{group.label}</strong><span>{group.books.length} 种<br/>{group.volumes} 册</span></aside>
         <div className="shelf-row-books">
           {group.books.flatMap((book, index) => {
-            const style = { "--set-color": ["#8e4a39", "#3d5960", "#896f41", "#665a45"][index % 4] } as CSSProperties;
+            const isVisibleToPublic = book.status === "APPROVED" && book.isPublic;
+            const style = { "--set-color": isVisibleToPublic ? ["#8e4a39", "#3d5960", "#896f41", "#665a45"][index % 4] : "#737373" } as CSSProperties;
             const titleSizeClass = book.title.length >= 13 ? "title-xxlong" : book.title.length >= 11 ? "title-xlong" : book.title.length >= 8 ? "title-long" : "";
             const titleClassName = `book-spine-title ${titleSizeClass}`.trim();
             const caseTitleClassName = `book-case-title ${titleSizeClass}`.trim();
@@ -168,15 +160,15 @@ const artifactPreviewItems = personalArtifactExamples.map((item, index) => ({ id
 const previewForExampleTitle = (title: string) => artifactPreviewItems.find((item) => item.title === title)?.image ?? "";
 const exampleForTitle = (title: string) => artifactPreviewItems.find((item) => item.title === title);
 
-function ItemsPanel({ artifacts, categories }: { artifacts: PersonalItem[]; categories: string[] }) {
+function ItemsPanel({ artifacts, categories, onSaved }: { artifacts: PersonalItem[]; categories: string[]; onSaved: () => Promise<void> }) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedCollection, setSelectedCollection] = useState<string | null>(null);
   const allCategories = [...new Set([...categories, ...artifacts.map((item) => item.editionOrCategory).filter((item): item is string => Boolean(item))])];
   const personalEntries = artifacts.map((item) => {
     const sample = exampleForTitle(item.title);
-    return { id: item.id, title: item.title, category: item.editionOrCategory || "未分类", collection: sample?.collection ?? null, creator: item.creator || "作者／来源待补充", era: item.era || "年代待补充", description: item.description || sample?.description || "暂无说明", image: item.media[0] ? mediaUrl(item, item.media[0].id) : sample?.image || "", source: sample?.source || "", example: item.title.startsWith("示例｜") };
+    return { id: item.id, title: item.title, category: item.editionOrCategory || "未分类", collection: sample?.collection ?? null, creator: item.creator || "作者／来源待补充", era: item.era || "年代待补充", description: item.description || sample?.description || "暂无说明", image: item.media[0] ? mediaUrl(item, item.media[0].id) : sample?.image || "", source: sample?.source || "", example: item.title.startsWith("示例｜"), record: item as PersonalItem | null };
   });
-  const examples = artifacts.some((item) => item.title.startsWith("示例｜")) ? [] : artifactPreviewItems.map((item) => ({ ...item, description: item.description, example: true }));
+  const examples = artifacts.some((item) => item.title.startsWith("示例｜")) ? [] : artifactPreviewItems.map((item) => ({ ...item, description: item.description, example: true, record: null as PersonalItem | null }));
   const sourceEntries = [...personalEntries, ...examples];
   const entries = selectedCollection ? sourceEntries.filter((item) => item.collection === selectedCollection) : sourceEntries.filter((item) => item.category === selectedCategory);
   const activeTitle = selectedCollection ?? selectedCategory ?? "";
@@ -188,6 +180,7 @@ function ItemsPanel({ artifacts, categories }: { artifacts: PersonalItem[]; cate
     <div className="artifact-mosaic">{entries.map((item) => <article className="artifact-tile" key={item.id}>
       {item.image ? <img src={item.image} alt={item.title}/> : <div className="artifact-image-placeholder">尚未添加图片</div>}
       <div className="artifact-tile-overlay"><span>{item.example ? "开放馆藏示例" : item.category}</span><h3>{item.title}</h3><small>{item.creator} · {item.era}</small><p>{item.description}</p>{item.example && <a href={item.source} target="_blank" rel="noreferrer">查看来源</a>}</div>
+      {item.record && <div className="artifact-tile-visibility"><PublicationControls item={item.record} onChanged={onSaved} artifact /></div>}
     </article>)}</div>
     {!entries.length && <div className="empty-state"><b>这个类别尚无藏品</b><p>可从左侧“藏品管理”新增记录并上传图片；随后会自动出现在这里。</p></div>}
   </section>;
@@ -214,9 +207,10 @@ const personalStatusLabel: Record<PersonalItem["status"], string> = {
   DRAFT: "", PENDING: "审核中", APPROVED: "", REJECTED: "已退回", NEEDS_REVISION: "待补充", ARCHIVED: "已归档",
 };
 
-function PublicationControls({ item, onChanged }: { item: PersonalItem; onChanged: () => Promise<void> }) {
+function PublicationControls({ item, onChanged, artifact = false }: { item: PersonalItem; onChanged: (updated: PersonalItem) => Promise<void>; artifact?: boolean }) {
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState("");
+  const visibility = item.status === "APPROVED" && item.isPublic ? "PUBLIC" : item.status === "PENDING" ? "PENDING" : "PRIVATE";
   const run = async (action: "APPLY_PUBLIC" | "WITHDRAW" | "SET_PRIVATE") => {
     setWorking(true); setMessage("");
     try {
@@ -224,13 +218,22 @@ function PublicationControls({ item, onChanged }: { item: PersonalItem; onChange
       const body = await response.json();
       if (!response.ok) return setMessage(body.message ?? "操作未完成。");
       if (action !== "APPLY_PUBLIC") setMessage(action === "WITHDRAW" ? "已撤回申请" : "已撤回公开");
-      await onChanged();
+      await onChanged({ ...item, ...body, media: item.media });
     } catch { setMessage("操作未完成。"); } finally { setWorking(false); }
   };
-  return <div className="personal-publication-controls">{personalStatusLabel[item.status] && <span className={`publication-status status-${item.status.toLowerCase()}`}>{personalStatusLabel[item.status]}</span>}
-    {item.status === "DRAFT" || item.status === "REJECTED" || item.status === "NEEDS_REVISION" ? <button type="button" disabled={working} onClick={() => void run("APPLY_PUBLIC")}>{working ? "申请中" : "申请公开"}</button> : null}
-    {item.status === "PENDING" ? <button type="button" className="publication-withdraw" disabled={working} onClick={() => void run("WITHDRAW")}>{working ? "处理中" : "撤回"}</button> : null}
-    {item.status === "APPROVED" && item.isPublic && <><a href={`/personal-collection/public/${item.id}`} target="_blank" rel="noreferrer">查看</a><button type="button" disabled={working} onClick={() => void run("SET_PRIVATE")}>{working ? "处理中" : "撤回"}</button></>}
+  return <div className={`personal-publication-controls${artifact ? " artifact-publication-controls" : ""}`}>
+    <label className="publication-choice"><span>是否公开</span><select aria-label={`“${item.title}”是否公开`} value={visibility} disabled={working || item.status === "ARCHIVED"} onChange={(event) => {
+      const choice = event.target.value;
+      if (choice === "PUBLIC" && visibility === "PRIVATE") void run("APPLY_PUBLIC");
+      if (choice === "PRIVATE" && visibility === "PENDING") void run("WITHDRAW");
+      if (choice === "PRIVATE" && visibility === "PUBLIC") void run("SET_PRIVATE");
+    }}>
+      <option value="PRIVATE">不公开</option>
+      {visibility === "PENDING" ? <option value="PENDING">审核中</option> : item.status !== "ARCHIVED" && <option value="PUBLIC">{visibility === "PUBLIC" ? "已公开" : "申请公开"}</option>}
+    </select></label>
+    {personalStatusLabel[item.status] && item.status !== "PENDING" && <span className={`publication-status status-${item.status.toLowerCase()}`}>{personalStatusLabel[item.status]}</span>}
+    {visibility === "PENDING" && <small>审核通过后才会公开</small>}
+    {visibility === "PUBLIC" && <a href={`/personal-collection/public/${item.id}`} target="_blank" rel="noreferrer">查看公开页</a>}
     {message && <small>{message}</small>}
   </div>;
 }
@@ -301,18 +304,17 @@ function BookManagementTable({ items, onAdd, onSaved, onItemSaved = () => {} }: 
   };
   const applyAllBooks = async () => {
     const candidates = rows.filter((row) => ["DRAFT", "REJECTED", "NEEDS_REVISION"].includes(row.status));
-    const eligible = candidates.filter((row) => row.media.length > 0);
-    const withoutImage = candidates.length - eligible.length;
     if (!candidates.length) return setApplyMessage("当前没有可申请公开的藏书。");
-    if (!eligible.length) return setApplyMessage("没有带图片的藏书可申请公开；请至少为每本书上传一张图片。");
-    if (!window.confirm(`将为 ${eligible.length} 本带照片的藏书发起公开申请${withoutImage ? `；另有 ${withoutImage} 本未上传照片，已自动跳过` : ""}。是否继续？`)) return;
+    if (!window.confirm(`将为 ${candidates.length} 本藏书发起公开审核申请。是否继续？`)) return;
     setApplyingAll(true);
     setApplyMessage("");
     try {
       const response = await fetch("/api/personal-collection/items/publication", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "APPLY_BOOKS" }) });
       const result = await response.json();
       if (!response.ok) return setApplyMessage(result.message ?? "公开申请未完成。");
-      setApplyMessage(`已申请 ${result.submitted} 本藏书，并已通知 ${result.reviewersNotified ?? 0} 位审核人员${result.skippedWithoutImage ? `；${result.skippedWithoutImage} 本因未上传照片未提交` : ""}。`);
+      setApplyMessage(`已申请 ${result.submitted} 本藏书，并已通知 ${result.reviewersNotified ?? 0} 位审核人员。`);
+      const appliedIds = new Set(candidates.map((item) => item.id));
+      setRows((current) => current.map((item) => appliedIds.has(item.id) ? { ...item, status: "PENDING", isPublic: false } : item));
       await onSaved();
     } catch { setApplyMessage("公开申请未完成，请稍后重试。"); }
     finally { setApplyingAll(false); }
@@ -345,7 +347,7 @@ function BookManagementTable({ items, onAdd, onSaved, onItemSaved = () => {} }: 
         <td><input aria-label="版本" value={text(row.editionOrCategory)} onChange={(event) => updateRow(row.id, "editionOrCategory", event.target.value)}/></td>
         <td><input aria-label="装帧" value={text(row.binding)} onChange={(event) => updateRow(row.id, "binding", event.target.value)}/></td>
         <td><textarea aria-label="备注" value={text(row.description)} onChange={(event) => updateRow(row.id, "description", event.target.value)}/></td>
-        <td className="record-action-cell"><div className="record-action-stack"><PublicationControls item={row} onChanged={onSaved}/><button className="book-delete-button" type="button" disabled={deletingIds.includes(row.id)} onClick={() => void deleteRow(row)}>{deletingIds.includes(row.id) ? "删除中" : "删除"}</button></div></td>
+        <td className="record-action-cell"><div className="record-action-stack"><PublicationControls item={row} onChanged={async (updated) => { setRows((current) => current.map((item) => item.id === updated.id ? updated : item)); await onSaved(); }}/><button className="book-delete-button" type="button" disabled={deletingIds.includes(row.id)} onClick={() => void deleteRow(row)}>{deletingIds.includes(row.id) ? "删除中" : "删除"}</button></div></td>
       </tr>) : <tr><td className="book-table-empty" colSpan={12}>尚无个人书籍。请使用右上角“＋ 添加书籍”录入，或在进入后的页面导入 CSV。</td></tr>}</tbody>
     </table></div>{message && <p className="personal-message">{message}</p>}
   </section>;
@@ -395,7 +397,7 @@ function ArtifactManagementTable({ items, categories, onAdd, onSaved }: { items:
   };
   return <section className="collection-panel book-table-panel artifact-table-panel">
     <div className="panel-heading book-table-heading"><div><p>OBJECT MANAGEMENT</p><h2>藏品管理</h2></div><div className="artifact-table-actions">{message && <small>{message}</small>}<button className="artifact-example-button" type="button" disabled={seeding} onClick={() => void addExamples}>{seeding ? "正在加入…" : "加载示例素材"}</button><button className="book-add-button" type="button" onClick={onAdd}>＋ 添加藏品</button></div></div>
-    <p className="book-table-note">所有手动新增及 CSV 导入的藏品均在此显示。修改字段后离开输入框即可保存；图片最多 3 张。</p>
+    <p className="book-table-note">所有手动新增及 CSV 导入的藏品均在此显示。每件文物可单独申请公开；审核通过后展示在公开收藏馆，也可随时设为不公开。修改字段后离开输入框即可保存；图片最多 3 张。</p>
     <div className="book-table-scroll"><table className="book-management-table artifact-management-table"><colgroup><col className="artifact-col-serial"/><col className="artifact-col-category"/><col className="artifact-col-title"/><col className="artifact-col-creator"/><col className="artifact-col-era"/><col className="artifact-col-price"/><col className="artifact-col-volume"/><col className="artifact-col-note"/><col className="artifact-col-action"/></colgroup><thead><tr><th>编号／图片</th><th>类别</th><th>藏品名称</th><th>作者／来源</th><th>年代</th><th>价格</th><th>数量</th><th>说明</th><th>操作</th></tr></thead><tbody>{rows.length ? rows.map((row) => <tr key={row.id} data-saving={savingIds.includes(row.id)}>
       <td className="serial-cell"><span>{row.serialNumber}</span><div className="book-row-images">{row.media.map((media) => <span key={media.id}><img src={mediaUrl(row, media.id)} alt="藏品图片"/><button type="button" aria-label="删除图片" onClick={() => void deleteImage(row, media.id)}>×</button></span>)}{!row.media.length && previewForExampleTitle(row.title) && <span className="example-image"><img src={previewForExampleTitle(row.title)} alt="开放馆藏示例图片"/></span>}{row.media.length < 3 && <label className="book-image-upload">{uploadingIds.includes(row.id) ? "上传中" : "+ 图"}<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => { void uploadImages(row, event.target.files); event.currentTarget.value = ""; }}/></label>}</div></td>
       <td><select aria-label={`${row.title}的类别`} value={text(row.editionOrCategory)} onChange={(event) => updateRow(row.id, "editionOrCategory", event.target.value)} onBlur={(event) => void saveRow({ ...row, editionOrCategory: event.currentTarget.value })}><option value="">请选择</option>{[...new Set([...categories, text(row.editionOrCategory)])].filter(Boolean).map((category) => <option value={category} key={category}>{category}</option>)}</select></td>
@@ -405,7 +407,7 @@ function ArtifactManagementTable({ items, categories, onAdd, onSaved }: { items:
       <td><input aria-label="价格" value={text(row.price)} onChange={(event) => updateRow(row.id, "price", event.target.value)} onBlur={(event) => void saveRow({ ...row, price: event.currentTarget.value })}/></td>
       <td><input aria-label="数量" type="number" min="1" max="999" value={row.volumeCount} onChange={(event) => updateRow(row.id, "volumeCount", Math.max(1, Number(event.target.value) || 1))} onBlur={(event) => void saveRow({ ...row, volumeCount: Math.max(1, Number(event.currentTarget.value) || 1) })}/></td>
       <td><textarea aria-label="说明" value={text(row.description)} onChange={(event) => updateRow(row.id, "description", event.target.value)} onBlur={(event) => void saveRow({ ...row, description: event.currentTarget.value })}/></td>
-       <td className="record-action-cell"><div className="record-action-stack"><PublicationControls item={row} onChanged={onSaved}/><button className="book-delete-button" type="button" onClick={() => void deleteRow(row)}>删除</button></div></td>
+       <td className="record-action-cell"><div className="record-action-stack"><PublicationControls item={row} onChanged={onSaved} artifact/><button className="book-delete-button" type="button" onClick={() => void deleteRow(row)}>删除</button></div></td>
     </tr>) : <tr><td className="book-table-empty" colSpan={9}>尚无个人藏品。请使用右上角“＋ 添加藏品”录入。</td></tr>}</tbody></table></div>{message && <p className="personal-message">{message}</p>}
   </section>;
 }
@@ -468,6 +470,7 @@ function CollectionEntryPanelLegacy({ type, items, onSaved, categories, onCatego
   const label = type === "BOOK" ? "书籍" : "藏品";
   const [message, setMessage] = useState(""); const [file, setFile] = useState<File>(); const [isImporting, setIsImporting] = useState(false);
   const [pendingImages, setPendingImages] = useState<File[]>([]); const [isSaving, setIsSaving] = useState(false);
+  const [visibilityChoice, setVisibilityChoice] = useState<"PRIVATE" | "PUBLIC">("PRIVATE");
   const [bookMetadata, setBookMetadata] = useState(blankManuscriptMetadata()); const fileInputRef = useRef<HTMLInputElement>(null);
   const [artifactCategory, setArtifactCategory] = useState(""); const [newArtifactCategory, setNewArtifactCategory] = useState(""); const [categoryMessage, setCategoryMessage] = useState("");
   const addArtifactCategory = async () => {
@@ -477,7 +480,7 @@ function CollectionEntryPanelLegacy({ type, items, onSaved, categories, onCatego
     setArtifactCategory(name); setNewArtifactCategory(""); setCategoryMessage(`已新增“${name}”，可直接保存藏品。`); await onCategoriesChanged();
   };
   const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault(); if (type === "ARTIFACT" && artifactCategory === "__new__") return setMessage("请先新增类别，再保存藏品。"); const data = new FormData(event.currentTarget);
+    event.preventDefault(); if (type === "ARTIFACT" && artifactCategory === "__new__") return setMessage("请先新增类别，再保存藏品。"); const form = event.currentTarget; const data = new FormData(form);
     const body = type === "BOOK"
       ? { type, title: data.get("title"), creator: bookMetadata.author, era: bookMetadata.dynasty, eraDetail: bookMetadata.eraDetail, publicationDate: bookMetadata.publicationDate, imprintPublisher: bookMetadata.imprintPublisher, editionOrCategory: bookMetadata.versionType, binding: bookMetadata.binding, categories: bookMetadata.categories, volumeCount: bookMetadata.volumeCount, description: bookMetadata.description }
       : { type, title: data.get("title"), creator: data.get("creator"), era: data.get("era"), editionOrCategory: artifactCategory, price: data.get("price"), volumeCount: data.get("volumeCount"), description: data.get("description") };
@@ -486,8 +489,15 @@ function CollectionEntryPanelLegacy({ type, items, onSaved, categories, onCatego
       const response = await fetch("/api/personal-collection/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); const result = await response.json();
       if (!response.ok) return setMessage(result.message ?? `无法新增${label}。`);
       let uploaded = 0;
-      for (const image of pendingImages) { const imageData = new FormData(); imageData.set("file", image); const imageResponse = await fetch(`/api/personal-collection/items/${result.id}/media`, { method: "POST", body: imageData }); if (imageResponse.ok) uploaded += 1; }
-      event.currentTarget.reset(); setPendingImages([]); if (type === "BOOK") setBookMetadata(blankManuscriptMetadata()); else setArtifactCategory(""); setMessage(`已新增“${result.title}”${uploaded ? `，并保存 ${uploaded} 张图片` : ""}。`); await onSaved();
+      let failedUploads = 0;
+      for (const image of pendingImages) { const imageData = new FormData(); imageData.set("file", image); const imageResponse = await fetch(`/api/personal-collection/items/${result.id}/media`, { method: "POST", body: imageData }); if (imageResponse.ok) uploaded += 1; else failedUploads += 1; }
+      let publicationMessage = "";
+      if (visibilityChoice === "PUBLIC") {
+        const application = await fetch(`/api/personal-collection/items/${result.id}/publication`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "APPLY_PUBLIC" }) });
+        const applicationResult = await application.json().catch(() => ({}));
+        publicationMessage = application.ok ? "，已提交公开审核" : `；公开申请未提交：${applicationResult.message ?? "请在管理列表中重试"}`;
+      }
+      form.reset(); setPendingImages([]); setVisibilityChoice("PRIVATE"); if (type === "BOOK") setBookMetadata(blankManuscriptMetadata()); else setArtifactCategory(""); setMessage(`已新增“${result.title}”${uploaded ? `，并保存 ${uploaded} 张图片` : ""}${failedUploads ? `；${failedUploads} 张图片上传失败` : ""}${publicationMessage}。`); await onSaved();
     } catch { setMessage(`无法新增${label}，请确认本地服务仍在运行。`); } finally { setIsSaving(false); }
   };
   const importCsv = async (event: FormEvent) => {
@@ -498,7 +508,9 @@ function CollectionEntryPanelLegacy({ type, items, onSaved, categories, onCatego
   return <section className={`collection-panel management-panel ${type === "BOOK" ? "book-entry-panel" : ""}`}>
     {type !== "BOOK" && <div className="panel-heading"><div><p>OBJECT MANAGEMENT</p><h2>{label}管理</h2></div><span>{items.length} 条</span></div>}
     <div className="management-layout">
-      <form className="personal-form" action="/api/personal-collection/items" method="post" onSubmit={(event) => void submit(event)}><input type="hidden" name="type" value={type}/><div className="personal-entry-heading"><h3>新增{label}</h3><button disabled={isSaving}>{isSaving ? "正在保存…" : `保存${label}`}</button></div>{type === "BOOK" ? <><div className="book-title-category-row"><label>书名<input name="title" required /></label><ManuscriptCategoryPicker compact value={bookMetadata} onChange={(patch) => setBookMetadata((current) => ({ ...current, ...patch }))}/></div><div className="entry-image-picker"><strong>书籍图片</strong><span>可先选择，保存时自动上传（最多 2 张）</span><label>选择图片<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setPendingImages(Array.from(event.target.files ?? []).slice(0, 2))}/></label>{pendingImages.length > 0 && <small>{pendingImages.map((image) => image.name).join("；")}</small>}</div><ManuscriptMetadataFields value={bookMetadata} onChange={(patch) => setBookMetadata((current) => ({ ...current, ...patch }))} showCategories={false}/></> : <><div className="artifact-title-category-row"><label>藏品名称<input name="title" required /></label><label>类别<select name="editionOrCategory" value={artifactCategory} required onChange={(event) => setArtifactCategory(event.target.value)}><option value="">请选择类别</option>{categories.map((category) => <option value={category} key={category}>{category}</option>)}<option value="__new__">＋ 新建类别…</option></select></label></div>{artifactCategory === "__new__" && <div className="artifact-category-create"><input value={newArtifactCategory} placeholder="如：印章" onChange={(event) => setNewArtifactCategory(event.target.value)}/><button type="button" onClick={() => void addArtifactCategory()}>新增类别</button>{categoryMessage && <small>{categoryMessage}</small>}</div>}<div className="personal-form-grid"><label>作者／来源<input name="creator" /></label><label>年代<input name="era" /></label></div><div className="personal-form-grid"><label>价格<input name="price" placeholder="如：¥ 800" /></label><label>数量<input name="volumeCount" type="number" min="1" max="999" defaultValue="1" /></label></div><div className="entry-image-picker"><strong>藏品图片</strong><span>可先选择，保存时自动上传（最多 3 张）</span><label>选择图片<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setPendingImages(Array.from(event.target.files ?? []).slice(0, 3))}/></label>{pendingImages.length > 0 && <small>{pendingImages.map((image) => image.name).join("；")}</small>}</div><label>说明<textarea name="description" /></label></>}</form>
+      <form className="personal-form" action="/api/personal-collection/items" method="post" onSubmit={(event) => void submit(event)}><input type="hidden" name="type" value={type}/><div className="personal-entry-heading"><h3>新增{label}</h3><button disabled={isSaving}>{isSaving ? "正在保存…" : `保存${label}`}</button></div>{type === "BOOK" ? <><div className="book-title-category-row"><label>书名<input name="title" required /></label><ManuscriptCategoryPicker compact value={bookMetadata} onChange={(patch) => setBookMetadata((current) => ({ ...current, ...patch }))}/></div><div className="entry-image-picker"><strong>书籍图片</strong><span>可先选择，保存时自动上传（最多 2 张）</span><label>选择图片<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setPendingImages(Array.from(event.target.files ?? []).slice(0, 2))}/></label>{pendingImages.length > 0 && <small>{pendingImages.map((image) => image.name).join("；")}</small>}</div><ManuscriptMetadataFields value={bookMetadata} onChange={(patch) => setBookMetadata((current) => ({ ...current, ...patch }))} showCategories={false}/></> : <><div className="artifact-title-category-row"><label>藏品名称<input name="title" required /></label><label>类别<select name="editionOrCategory" value={artifactCategory} required onChange={(event) => setArtifactCategory(event.target.value)}><option value="">请选择类别</option>{categories.map((category) => <option value={category} key={category}>{category}</option>)}<option value="__new__">＋ 新建类别…</option></select></label></div>{artifactCategory === "__new__" && <div className="artifact-category-create"><input value={newArtifactCategory} placeholder="如：印章" onChange={(event) => setNewArtifactCategory(event.target.value)}/><button type="button" onClick={() => void addArtifactCategory()}>新增类别</button>{categoryMessage && <small>{categoryMessage}</small>}</div>}<div className="personal-form-grid"><label>作者／来源<input name="creator" /></label><label>年代<input name="era" /></label></div><div className="personal-form-grid"><label>价格<input name="price" placeholder="如：¥ 800" /></label><label>数量<input name="volumeCount" type="number" min="1" max="999" defaultValue="1" /></label></div><div className="entry-image-picker"><strong>藏品图片</strong><span>可先选择，保存时自动上传（最多 3 张）</span><label>选择图片<input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(event) => setPendingImages(Array.from(event.target.files ?? []).slice(0, 3))}/></label>{pendingImages.length > 0 && <small>{pendingImages.map((image) => image.name).join("；")}</small>}</div><label>说明<textarea name="description" /></label></>}
+        <fieldset className="entry-visibility-choice"><legend>是否公开</legend><label><input type="radio" name="visibilityChoice" value="PRIVATE" checked={visibilityChoice === "PRIVATE"} onChange={() => setVisibilityChoice("PRIVATE")}/>暂不公开，仅自己可见</label><label><input type="radio" name="visibilityChoice" value="PUBLIC" checked={visibilityChoice === "PUBLIC"} onChange={() => setVisibilityChoice("PUBLIC")}/>申请公开，审核通过后展示</label><small>书籍和藏品均可不上传图片；公开前仍需审核。</small></fieldset>
+      </form>
       <form className="personal-import" onSubmit={(event) => void importCsv(event)}>
         <h3>批量导入</h3>
         <p>{type === "BOOK" ? "书籍 Excel／CSV 与公共古籍录入使用同一套核心书目字段；资料只属于当前账户，不进入公共馆藏。" : "可一次导入多条个人藏品；资料只属于当前账户，不进入公共馆藏。"}</p>
