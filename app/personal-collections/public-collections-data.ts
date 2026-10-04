@@ -1,3 +1,7 @@
+import { usesCloudRuntime } from "../../lib/cloud-runtime";
+import { getCollectionProfile } from "../../lib/personal-collection-profile";
+import { prisma } from "../../lib/prisma";
+
 export type PublicCollectionCover = {
   itemId: string;
   mediaId: string;
@@ -9,6 +13,14 @@ export type PublicCollectionSummary = {
   name: string;
   ownerName: string;
   description: string;
+  publicCollectorName?: string | null;
+  themes?: string[];
+  primaryEras?: string[];
+  primaryRegion?: string | null;
+  collectingSinceYear?: number | null;
+  originStory?: string | null;
+  collaborationInterests?: string[];
+  acceptsMessages?: boolean | null;
   cover: PublicCollectionCover;
   bookCount: number;
   artifactCount: number;
@@ -60,6 +72,14 @@ const mockCollections: PublicCollectionSummary[] = [{
   name: "岩境書舍",
   ownerName: "岩境書舍",
   description: "收藏清代至民国时期的汉文回教古籍，涵盖经训、法理、思想与语言等方向。",
+  publicCollectorName: "岩境主人",
+  themes: ["经训", "法理", "思想", "语言文字"],
+  primaryEras: ["清代", "民国"],
+  primaryRegion: "西北地区",
+  collectingSinceYear: 2012,
+  originStory: "从整理家藏旧籍开始，逐步关注汉文回教古籍的版本、流传与地方文化记忆。",
+  collaborationInterests: ["学术研究", "版本鉴定", "数字化合作"],
+  acceptsMessages: true,
   cover: {
     itemId: "efd272ed-eaa7-46cc-93c0-5fb34a5f08dc",
     mediaId: "cmrot47id00u5688g9mmlydwx",
@@ -100,12 +120,73 @@ const mockItemsByCollection: Record<string, PublicCollectionItem[]> = {
   ],
 };
 
+async function databaseCollections() {
+  const records = await prisma.personalCollectionItem.findMany({
+    where: { status: "APPROVED", isPublic: true },
+    include: {
+      owner: { select: { id: true, displayName: true, email: true } },
+      media: { where: { visibility: "PUBLIC", mimeType: { startsWith: "image/" } }, orderBy: { createdAt: "asc" }, select: { id: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+  const groups = new Map<string, typeof records>();
+  for (const record of records) groups.set(record.ownerId, [...(groups.get(record.ownerId) ?? []), record]);
+  const result: Array<{ collection: PublicCollectionSummary; items: PublicCollectionItem[] }> = [];
+  for (const ownerRecords of groups.values()) {
+    const owner = ownerRecords[0].owner;
+    const profile = await getCollectionProfile(owner);
+    const items = ownerRecords.map<PublicCollectionItem>((item) => ({
+      id: item.id,
+      type: item.type,
+      title: item.title,
+      creator: item.creator,
+      era: item.era,
+      category: item.categories[0] ?? null,
+      editionOrCategory: item.editionOrCategory,
+      serialNumber: item.serialNumber,
+      cover: item.media[0] ? {
+        itemId: item.id,
+        mediaId: item.media[0].id,
+        url: `/api/personal-collection/public/${item.id}/media/${item.media[0].id}`,
+      } : null,
+    }));
+    const bookCount = ownerRecords.filter((item) => item.type === "BOOK").length;
+    const artifactCount = ownerRecords.length - bookCount;
+    result.push({
+      collection: {
+        slug: profile.slug,
+        name: profile.displayName,
+        ownerName: profile.publicCollectorName || owner.displayName?.trim() || "收藏者",
+        description: profile.description || "收藏者尚未补充收藏馆简介。",
+        publicCollectorName: profile.publicCollectorName,
+        themes: profile.themes,
+        primaryEras: profile.primaryEras,
+        primaryRegion: profile.primaryRegion,
+        collectingSinceYear: profile.collectingSinceYear,
+        originStory: profile.originStory,
+        collaborationInterests: profile.collaborationInterests,
+        acceptsMessages: profile.acceptsMessages,
+        cover: profile.cover ?? items.find((item) => item.cover)?.cover ?? null,
+        bookCount,
+        artifactCount,
+        totalCount: ownerRecords.length,
+        updatedAt: ownerRecords[0].updatedAt.toISOString(),
+      },
+      items,
+    });
+  }
+  return result;
+}
+async function sourceCollections() {
+  if (usesCloudRuntime()) return mockCollections.map((collection) => ({ collection, items: mockItemsByCollection[collection.slug] ?? [] }));
+  return databaseCollections();
+}
+
 export async function getPublicCollections({ q = "", page = 1, limit = 12 }: { q?: string; page?: number; limit?: number } = {}): Promise<PublicCollectionsResponse> {
-  // TODO(api): replace the in-memory source with GET /api/personal-collections once the backend endpoint is available.
   const term = q.trim().toLocaleLowerCase();
-  const filtered = mockCollections.filter((collection) =>
-    !term || `${collection.name} ${collection.ownerName}`.toLocaleLowerCase().includes(term),
-  );
+  const source = (await sourceCollections()).map((entry) => entry.collection);
+  const filtered = source.filter((collection) => !term || [collection.name, collection.ownerName, collection.description, ...(collection.themes ?? []), ...(collection.primaryEras ?? []), collection.primaryRegion]
+    .filter(Boolean).join(" ").toLocaleLowerCase().includes(term));
   const safeLimit = Math.max(1, Math.min(24, limit));
   const totalPages = Math.max(1, Math.ceil(filtered.length / safeLimit));
   const safePage = Math.max(1, Math.min(page, totalPages));
@@ -117,11 +198,11 @@ export async function getPublicCollections({ q = "", page = 1, limit = 12 }: { q
 }
 
 export async function getPublicCollection(slug: string, { type, q = "", page = 1, limit = 24 }: { type?: "BOOK" | "ARTIFACT"; q?: string; page?: number; limit?: number } = {}): Promise<PublicCollectionResponse | null> {
-  // TODO(api): replace the in-memory source with GET /api/personal-collections/:slug once the backend endpoint is available.
-  const collection = mockCollections.find((item) => item.slug === slug);
-  if (!collection) return null;
+  const entry = (await sourceCollections()).find((item) => item.collection.slug === slug);
+  if (!entry) return null;
+  const { collection } = entry;
   const term = q.trim().toLocaleLowerCase();
-  const filtered = (mockItemsByCollection[slug] ?? []).filter((item) => {
+  const filtered = entry.items.filter((item) => {
     const searchable = [item.title, item.creator, item.era, item.category, item.editionOrCategory, item.serialNumber].filter(Boolean).join(" ").toLocaleLowerCase();
     return (!type || item.type === type) && (!term || searchable.includes(term));
   });
@@ -137,9 +218,8 @@ export async function getPublicCollection(slug: string, { type, q = "", page = 1
 }
 
 export async function searchPublicCollectionItems({ type, q = "", page = 1, limit = 24 }: { type?: "BOOK" | "ARTIFACT"; q?: string; page?: number; limit?: number } = {}): Promise<PublicCollectionSearchResponse> {
-  // TODO(api): replace this source with GET /api/personal-collections/items once the backend endpoint is available.
   const term = q.trim().toLocaleLowerCase();
-  const allItems = mockCollections.flatMap((collection) => (mockItemsByCollection[collection.slug] ?? []).map((item) => ({
+  const allItems = (await sourceCollections()).flatMap(({ collection, items }) => items.map((item) => ({
     ...item,
     collection: { slug: collection.slug, name: collection.name, ownerName: collection.ownerName },
   })));

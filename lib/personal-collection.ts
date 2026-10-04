@@ -2,6 +2,7 @@ import { PersonalItemType, Prisma, ReviewStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { parseCsvDocument } from "./csv";
 import { notifyUsers, publicationReviewers } from "./notifications";
+import { clearCollectionCoverForItem } from "./personal-collection-profile";
 import { prisma } from "./prisma";
 
 export type PersonalItemInput = {
@@ -270,6 +271,7 @@ export async function setPersonalItemPublic(ownerId: string, id: string, isPubli
   `);
   if (!rows[0]) throw new Error(isPublic ? "仅审核通过的记录可以公开。" : "未找到可调整的个人收藏记录。");
   await prisma.mediaAsset.updateMany({ where: { personalCollectionItemId: id }, data: { visibility: isPublic ? "PUBLIC" : "PRIVATE" } });
+  if (!isPublic) await clearCollectionCoverForItem(ownerId, id);
   return rows[0];
 }
 
@@ -320,6 +322,7 @@ export async function reviewPersonalItem(reviewerId: string, id: string, decisio
   `);
   if (!rows[0]) throw new Error("未找到可审核的公开申请；系统不允许审核本人提交的记录。");
   await prisma.mediaAsset.updateMany({ where: { personalCollectionItemId: id }, data: { visibility: decision === "APPROVED" ? "PUBLIC" : "PRIVATE" } });
+  if (decision !== "APPROVED" && rows[0].ownerId) await clearCollectionCoverForItem(rows[0].ownerId, id);
   const titles = {
     APPROVED: "公开申请已通过",
     NEEDS_REVISION: "公开申请需要补充",

@@ -7,12 +7,14 @@ import { HoldingFilterAutoClose } from "./holding-filter-autoclose";
 import { isHoldingOrigin, listHoldings, type HoldingRecord } from "../../lib/holdings-repository";
 import { getSearchHeroContent } from "../../lib/search-hero-content";
 import type { CSSProperties } from "react";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 type BrowseView = "books" | "institutions";
 type DisplayMode = "grouped" | "table";
 type SortKey = "title" | "institution" | "region" | "year" | "callNumber";
+type SortDirection = "asc" | "desc";
 type ColumnFilterKey = "title" | "author" | "publicationDate" | "version" | "imprintPublisher" | "institution" | "region" | "callNumber";
 
 type HoldingsPageProps = {
@@ -22,6 +24,9 @@ type HoldingsPageProps = {
     view?: string;
     mode?: string;
     sort?: string;
+    dir?: string;
+    page?: string;
+    pageSize?: string;
     title?: string;
     author?: string;
     publicationDate?: string;
@@ -47,6 +52,11 @@ function recordTypeLabel(record: HoldingRecord["record"]) {
 
 function text(value?: string | number | null) {
   if (value === null || value === undefined || value === "") return "未填写";
+  return String(value);
+}
+
+function tableText(value?: string | number | null) {
+  if (value === null || value === undefined || value === "" || value === "未填写" || value === "/") return "—";
   return String(value);
 }
 
@@ -100,7 +110,7 @@ function groupByInstitution(holdings: HoldingRecord[]) {
   return [...groups.values()].sort((left, right) => left.title.localeCompare(right.title, "zh-CN"));
 }
 
-function sortHoldings(holdings: HoldingRecord[], sort: SortKey) {
+function sortHoldings(holdings: HoldingRecord[], sort: SortKey, direction: SortDirection) {
   const sorted = [...holdings];
   sorted.sort((left, right) => {
     const leftValue =
@@ -123,9 +133,23 @@ function sortHoldings(holdings: HoldingRecord[], sort: SortKey) {
             : sort === "callNumber"
               ? right.callNumber
               : right.record.title;
-    return sortText(leftValue).localeCompare(sortText(rightValue), "zh-CN", { numeric: true });
+    const result = sortText(leftValue).localeCompare(sortText(rightValue), "zh-CN", { numeric: true });
+    return direction === "desc" ? -result : result;
   });
   return sorted;
+}
+
+function paginationItems(current: number, total: number) {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  const pages = new Set([1, total, current - 1, current, current + 1]);
+  const validPages = [...pages].filter((page) => page >= 1 && page <= total).sort((left, right) => left - right);
+  const items: Array<number | string> = [];
+  validPages.forEach((page, index) => {
+    const previous = validPages[index - 1];
+    if (previous && page - previous > 1) items.push(`ellipsis-${previous}`);
+    items.push(page);
+  });
+  return items;
 }
 
 function recordDetailHref(holding: HoldingRecord) {
@@ -216,6 +240,10 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
   const sort: SortKey = ["institution", "region", "year", "callNumber"].includes(params.sort ?? "")
     ? (params.sort as SortKey)
     : "title";
+  const sortDirection: SortDirection = params.dir === "desc" ? "desc" : "asc";
+  const requestedPageSize = Number(params.pageSize);
+  const pageSize = [25, 50, 100].includes(requestedPageSize) ? requestedPageSize : 25;
+  const requestedPage = Math.max(1, Number(params.page) || 1);
 
   const columnFilters: Record<ColumnFilterKey, string | undefined> = {
     title: params.title?.trim() || undefined,
@@ -244,9 +272,10 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
   });
 
   const grouped = view === "books" ? groupByBook(holdings) : groupByInstitution(holdings);
-  const tableRows = sortHoldings(holdings, sort);
-  const hasColumnFilters = Object.values(columnFilters).some(Boolean);
-
+  const sortedTableRows = sortHoldings(holdings, sort, sortDirection);
+  const totalPages = Math.max(1, Math.ceil(sortedTableRows.length / pageSize));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const tableRows = sortedTableRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const tableOptions = {
     authors: uniqueText(rawHoldings.map((holding) => holding.record.author)),
     institutions: uniqueText(rawHoldings.map((holding) => holding.institution)),
@@ -260,6 +289,9 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
     view?: BrowseView;
     mode?: DisplayMode;
     sort?: SortKey;
+    direction?: SortDirection;
+    page?: number;
+    pageSize?: number;
     clearColumnFilters?: boolean;
   }) => {
     const sp = new URLSearchParams();
@@ -268,11 +300,17 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
     const nextView = next.view ?? view;
     const nextMode = next.mode ?? mode;
     const nextSort = next.sort ?? sort;
+    const nextDirection = next.direction ?? sortDirection;
+    const nextPageSize = next.pageSize ?? pageSize;
+    const nextPage = next.page ?? 1;
     if (nextQ) sp.set("q", nextQ);
     if (nextOrigin) sp.set("origin", nextOrigin);
     if (nextMode !== "table" && nextView !== "books") sp.set("view", nextView);
     if (nextMode !== "grouped") sp.set("mode", nextMode);
     if (nextMode === "table" && nextSort !== "title") sp.set("sort", nextSort);
+    if (nextMode === "table" && nextDirection === "desc") sp.set("dir", nextDirection);
+    if (nextMode === "table" && nextPageSize !== 25) sp.set("pageSize", String(nextPageSize));
+    if (nextMode === "table" && nextPage > 1) sp.set("page", String(nextPage));
     if (!next.clearColumnFilters) {
       for (const [key, value] of Object.entries(columnFilters)) {
         if (value) sp.set(key, value);
@@ -299,6 +337,8 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
     if (origin) sp.set("origin", origin);
     sp.set("mode", "table");
     if (sort !== "title") sp.set("sort", sort);
+    if (sortDirection === "desc") sp.set("dir", sortDirection);
+    if (pageSize !== 25) sp.set("pageSize", String(pageSize));
     for (const [key, value] of Object.entries(columnFilters)) {
       if (key !== removeKey && value) sp.set(key, value);
     }
@@ -306,8 +346,17 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
     return `/holdings${qs ? `?${qs}` : ""}`;
   };
   const tableClearFilterHref = makeLink({ mode: "table", clearColumnFilters: true });
+  const tableSortHref = (key: SortKey) => makeLink({
+    mode: "table",
+    sort: key,
+    direction: sort === key && sortDirection === "asc" ? "desc" : "asc",
+  });
+  const sortIndicator = (key: SortKey) => sort === key ? <span className="holding-sort-indicator" aria-hidden="true">{sortDirection === "asc" ? "↑" : "↓"}</span> : null;
 
   const activeColumnFilters = (Object.entries(columnFilters) as Array<[ColumnFilterKey, string | undefined]>).filter(([, value]) => value);
+  const tablePaginationItems = paginationItems(currentPage, totalPages);
+  const firstVisibleRow = sortedTableRows.length ? (currentPage - 1) * pageSize + 1 : 0;
+  const lastVisibleRow = Math.min(currentPage * pageSize, sortedTableRows.length);
 
   const textFilter = (name: ColumnFilterKey, placeholder: string) => (
     <details className={`holding-column-filter ${columnFilters[name] ? "active" : ""}`}>
@@ -415,25 +464,31 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
             </nav>
           </div>
 
-          <p className="result-count">
+          {mode !== "table" ? <p className="result-count">
             <strong>{holdings.length}</strong> 条记录，<strong>{grouped.length}</strong> {resultUnit}
-          </p>
+          </p> : null}
 
           {holdings.length === 0 ? (
             <div className="empty-state">
               <h2>没有找到相符的图书馆资料</h2>
               <p>可以尝试书名、作者、图书馆、国家或检索号。</p>
-              <a href="/holdings">查看全部图书馆资料</a>
+              <Link href="/holdings">查看全部图书馆资料</Link>
             </div>
           ) : mode === "table" ? (
-            <div className="holding-table-view">
+            <section className="holding-table-shell">
               <HoldingFilterAutoClose />
               <form id="holding-table-filter-form" className="holding-table-filter-form" action="/holdings">
                 {query ? <input type="hidden" name="q" value={query} /> : null}
                 {origin ? <input type="hidden" name="origin" value={origin} /> : null}
                 <input type="hidden" name="mode" value="table" />
                 {sort !== "title" ? <input type="hidden" name="sort" value={sort} /> : null}
+                {sortDirection === "desc" ? <input type="hidden" name="dir" value="desc" /> : null}
+                {pageSize !== 25 ? <input type="hidden" name="pageSize" value={pageSize} /> : null}
               </form>
+              <header className="holding-table-toolbar">
+                <div><strong>{holdings.length}</strong> 条记录 <span>当前显示 {firstVisibleRow}–{lastVisibleRow}</span></div>
+                <nav aria-label="每页记录数"><span>每页</span>{[25, 50, 100].map((size) => <a href={makeLink({ mode: "table", pageSize: size })} aria-current={pageSize === size ? "page" : undefined} key={size}>{size}</a>)}</nav>
+              </header>
               {activeColumnFilters.length ? (
                 <div className="holding-active-filters" aria-label="已选筛选条件">
                   <span>已选条件：</span>
@@ -445,34 +500,25 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
                   <a className="holding-filter-clear-all" href={tableClearFilterHref}>清除全部</a>
                 </div>
               ) : null}
-              <table>
+              <div className="holding-table-view">
+              <table className="holding-data-table">
                 <thead>
                   <tr>
                     <th>
                       <span className="holding-table-head-cell">
-                        <a href={makeLink({ mode: "table", sort: "title" })}>书名</a>
-                        {textFilter("title", "书名")}
+                        <a href={tableSortHref("title")}>书名与作者 {sortIndicator("title")}</a>
+                        <span className="holding-table-subfilters">{textFilter("title", "书名")}{selectFilter("author", "作者", tableOptions.authors)}</span>
                       </span>
                     </th>
                     <th>
                       <span className="holding-table-head-cell">
-                        <span>作者</span>
-                        {selectFilter("author", "作者", tableOptions.authors)}
-                      </span>
-                    </th>
-                    <th>册数</th>
-                    <th>
-                      <a href={makeLink({ mode: "table", sort: "year" })}>刊刻年份</a>
-                    </th>
-                    <th>
-                      <span className="holding-table-head-cell">
-                        <span>刊刻时间</span>
+                        <a href={tableSortHref("year")}>年代 {sortIndicator("year")}</a>
                         {textFilter("publicationDate", "刊刻时间")}
                       </span>
                     </th>
                     <th>
                       <span className="holding-table-head-cell">
-                        <span>版本</span>
+                        <span>版本／册数</span>
                         {selectFilter("version", "版本", tableOptions.versions)}
                       </span>
                     </th>
@@ -484,54 +530,48 @@ export default async function HoldingsPage({ searchParams }: HoldingsPageProps) 
                     </th>
                     <th>
                       <span className="holding-table-head-cell">
-                        <a href={makeLink({ mode: "table", sort: "region" })}>国家/地区</a>
-                        {selectFilter("region", "国家", tableOptions.regions)}
+                        <a href={tableSortHref("institution")}>馆藏机构 {sortIndicator("institution")}</a>
+                        <span className="holding-table-subfilters">{selectFilter("institution", "图书馆", tableOptions.institutions)}{selectFilter("region", "国家", tableOptions.regions)}</span>
                       </span>
                     </th>
                     <th>
                       <span className="holding-table-head-cell">
-                        <a href={makeLink({ mode: "table", sort: "institution" })}>图书馆</a>
-                        {selectFilter("institution", "图书馆", tableOptions.institutions)}
-                      </span>
-                    </th>
-                    <th>
-                      <span className="holding-table-head-cell">
-                        <a href={makeLink({ mode: "table", sort: "callNumber" })}>检索号</a>
+                        <a href={tableSortHref("callNumber")}>检索号 {sortIndicator("callNumber")}</a>
                         {textFilter("callNumber", "检索号")}
                       </span>
                     </th>
-                    <th>链接</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {tableRows.map((holding) => (
                     <tr key={holding.id}>
-                      <td>
-                        <a href={recordDetailHref(holding)}>{holding.record.title}</a>
+                      <td data-label="书名与作者">
+                        <a className="holding-table-title" href={recordDetailHref(holding)}>{holding.record.title}</a>
+                        <small>{holdingAuthorLabel(holding)}</small>
                       </td>
-                      <td>{holdingAuthorLabel(holding)}</td>
-                      <td>{holding.record.volumeCount ? `${holding.record.volumeCount} 册` : "—"}</td>
-                      <td>{text(holdingPublicationYear(holding))}</td>
-                      <td>{text(holding.record.publicationDate)}</td>
-                      <td>{text(holding.record.versionType || holding.record.binding || holding.record.category)}</td>
-                      <td>{text(holding.record.imprintPublisher)}</td>
-                      <td>{holding.region}</td>
-                      <td>{holding.institution}</td>
-                      <td>{text(holding.callNumber)}</td>
-                      <td>
-                        {holding.catalogUrl ? (
-                          <a href={holding.catalogUrl} target="_blank" rel="noreferrer">
-                            官方目录 ↗
-                          </a>
-                        ) : (
-                          <a href={recordDetailHref(holding)}>查看</a>
-                        )}
+                      <td data-label="年代"><b>{tableText(holdingPublicationYear(holding))}</b><small>{tableText(holding.record.publicationDate)}</small></td>
+                      <td data-label="版本／册数"><b>{tableText(holding.record.versionType || holding.record.binding || holding.record.category)}</b><small>{holding.record.volumeCount ? `${holding.record.volumeCount} 册` : "册数未录入"}</small></td>
+                      <td data-label="刊刻主体">{tableText(holding.record.imprintPublisher)}</td>
+                      <td data-label="馆藏机构"><b>{holding.institution}</b><small><span className="holding-region-tag">{holding.region}</span>{originLabels[holding.origin]}</small></td>
+                      <td data-label="检索号"><code>{tableText(holding.callNumber)}</code></td>
+                      <td data-label="操作">
+                        <div className="holding-table-actions">
+                          <a href={recordDetailHref(holding)}>详情</a>
+                          {holding.catalogUrl ? <a href={holding.catalogUrl} target="_blank" rel="noreferrer">馆方目录 ↗</a> : null}
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+              {totalPages > 1 ? <nav className="holding-table-pagination" aria-label="表格分页">
+                <a href={makeLink({ mode: "table", page: Math.max(1, currentPage - 1), pageSize })} aria-disabled={currentPage === 1}>上一页</a>
+                {tablePaginationItems.map((item) => typeof item === "number" ? <a href={makeLink({ mode: "table", page: item, pageSize })} aria-current={item === currentPage ? "page" : undefined} key={item}>{item}</a> : <span key={item}>…</span>)}
+                <a href={makeLink({ mode: "table", page: Math.min(totalPages, currentPage + 1), pageSize })} aria-disabled={currentPage === totalPages}>下一页</a>
+              </nav> : null}
+            </section>
           ) : (
             <div className="holding-accordion-list">
               {grouped.map((group) => (

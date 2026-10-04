@@ -1,4 +1,4 @@
-# 个人收藏馆资料编辑：名称、简介与封面
+# 个人收藏馆资料编辑：基本资料、收藏特征、合作意向与封面
 
 ## 目标
 
@@ -12,6 +12,11 @@
 
 - 收藏馆名称：必填，2–40 个字符。
 - 收藏馆简介：选填，最多 300 个字符。
+- 收藏者公开称呼：选填，最多 20 个字符。
+- 收藏主题、主要收藏年代：选填，各最多 5 项。
+- 主要收藏地域、开始收藏年份：选填。
+- 收藏缘起：选填，最多 500 个字符。
+- 研究与合作意向、是否接受私信：选填。
 - 收藏馆封面：从本人已审核公开的书籍或藏品图片中选择一张，也可恢复为系统默认封面。
 
 ### 页面与入口
@@ -65,6 +70,14 @@ PersonalCollectionProfile
 ├── slug                        唯一、稳定，用于公开 URL
 ├── displayName                 收藏馆名称
 ├── description                 收藏馆简介，可为空
+├── publicCollectorName         公开称呼，可为空
+├── themes                      收藏主题数组
+├── primaryEras                 主要年代数组
+├── primaryRegion               主要地域，可为空
+├── collectingSinceYear         开始收藏年份，可为空
+├── originStory                 收藏缘起，可为空
+├── collaborationInterests      合作意向数组
+├── acceptsMessages             是否接受私信，可为空
 ├── coverMediaId                可为空，关联 MediaAsset
 ├── createdAt
 └── updatedAt
@@ -100,6 +113,14 @@ GET /api/personal-collection/profile
   "slug": "yan-jing-shu-she",
   "displayName": "岩境書舍",
   "description": "收藏清代至民国时期的汉文回教古籍。",
+  "publicCollectorName": "岩境主人",
+  "themes": ["经训", "语言文字"],
+  "primaryEras": ["清代", "民国"],
+  "primaryRegion": "西北地区",
+  "collectingSinceYear": 2012,
+  "originStory": "从整理家藏旧籍开始，逐步关注相关古籍的版本与流传。",
+  "collaborationInterests": ["学术研究", "版本鉴定", "数字化合作"],
+  "acceptsMessages": true,
   "cover": {
     "mediaId": "media_001",
     "itemId": "item_001",
@@ -162,6 +183,14 @@ Content-Type: application/json
 {
   "displayName": "岩境書舍",
   "description": "收藏清代至民国时期的汉文回教古籍。",
+  "publicCollectorName": "岩境主人",
+  "themes": ["经训", "语言文字"],
+  "primaryEras": ["清代", "民国"],
+  "primaryRegion": "西北地区",
+  "collectingSinceYear": 2012,
+  "originStory": "从整理家藏旧籍开始，逐步关注相关古籍的版本与流传。",
+  "collaborationInterests": ["学术研究", "版本鉴定", "数字化合作"],
+  "acceptsMessages": true,
   "coverMediaId": "media_001"
 }
 ```

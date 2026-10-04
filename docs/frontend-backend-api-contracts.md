@@ -10,26 +10,26 @@
 4. 藏友私信／站内信。
 5. 持有效借阅证导出其他收藏馆的公开书单。
 
-前端已经按照本文的数据结构完成页面和 Mock。后端接通后，前端应移除对应 Mock 数据和 localStorage 回退。
+公开收藏馆、收藏馆资料和公开馆藏检索已接通本地 PostgreSQL；书单导出与站内信接口仍待实现。
 
 ## 2. 接口总览
 
 | 编号 | 方法 | 路径 | 登录 | 当前前端状态 | 后端状态 |
 | --- | --- | --- | --- | --- | --- |
-| PC-01 | `GET` | `/api/personal-collections` | 否 | 页面完成，当前使用 Mock | 待实现 |
-| PC-02 | `GET` | `/api/personal-collections/:slug` | 否 | 页面完成，当前使用 Mock | 待实现 |
+| PC-01 | `GET` | `/api/personal-collections` | 否 | 已接通 | 已实现（本地 PostgreSQL） |
+| PC-02 | `GET` | `/api/personal-collections/:slug` | 否 | 已接通 | 已实现（本地 PostgreSQL） |
 | PC-03 | `GET` | `/api/personal-collections/:slug/books/export?format=xlsx` | 是，且需有效借阅证 | 导出入口与下载逻辑完成 | 待实现 |
-| PP-01 | `GET` | `/api/personal-collection/profile` | 是 | 请求代码完成，404 时使用 Mock | 待实现 |
-| PP-02 | `GET` | `/api/personal-collection/profile/cover-options` | 是 | 请求代码完成，404 时使用 Mock | 待实现 |
-| PP-03 | `PATCH` | `/api/personal-collection/profile` | 是 | 请求代码完成，404 时本地保存 | 待实现 |
-| PS-01 | `GET` | `/api/personal-collections/items` | 否 | 页面完成，当前使用 Mock | 待实现 |
+| PP-01 | `GET` | `/api/personal-collection/profile` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
+| PP-02 | `GET` | `/api/personal-collection/profile/cover-options` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
+| PP-03 | `PATCH` | `/api/personal-collection/profile` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
+| PS-01 | `GET` | `/api/personal-collections/items` | 否 | 已接通 | 已实现（本地 PostgreSQL） |
 | MSG-01 | `GET` | `/api/messages/conversations` | 是 | 请求代码完成，404 时使用 Mock | 待实现 |
 | MSG-02 | `GET` | `/api/messages/conversations/:conversationId` | 是 | 请求代码完成 | 待实现 |
 | MSG-03 | `POST` | `/api/messages/conversations` | 是 | 请求代码完成，404 时本地保存 | 待实现 |
 | MSG-04 | `POST` | `/api/messages/conversations/:conversationId/messages` | 是 | 请求代码完成，404 时本地保存 | 待实现 |
 | MSG-05 | `PATCH` | `/api/messages/conversations/:conversationId/read` | 是 | 请求代码完成，404 时本地更新 | 待实现 |
 
-共计：**12 条待实现或待联调接口**。
+当前剩余：**6 条待实现或待联调接口**（书单导出 1 条、站内信 5 条）。
 
 ## 3. 通用约定
 
@@ -183,6 +183,14 @@ GET /api/personal-collections/:slug?type=&q=&page=1&limit=24
     "name": "岩境書舍",
     "ownerName": "张三",
     "description": "收藏清代至民国时期的汉文回教古籍。",
+    "publicCollectorName": "岩境主人",
+    "themes": ["经训", "语言文字"],
+    "primaryEras": ["清代", "民国"],
+    "primaryRegion": "西北地区",
+    "collectingSinceYear": 2012,
+    "originStory": "从整理家藏旧籍开始，逐步关注相关古籍的版本与流传。",
+    "collaborationInterests": ["学术研究", "版本鉴定", "数字化合作"],
+    "acceptsMessages": true,
     "cover": {
       "itemId": "item_001",
       "mediaId": "media_001",
@@ -295,6 +303,14 @@ PersonalCollectionProfile
 ├── slug                 唯一、稳定
 ├── displayName
 ├── description          可为空
+├── publicCollectorName  可为空，公开称呼
+├── themes               字符串数组，默认 []
+├── primaryEras          字符串数组，默认 []
+├── primaryRegion        可为空
+├── collectingSinceYear  可为空
+├── originStory          可为空
+├── collaborationInterests 字符串数组，默认 []
+├── acceptsMessages      可为空；null 表示未设置
 ├── coverMediaId         可为空，关联 MediaAsset
 ├── createdAt
 └── updatedAt
@@ -315,6 +331,14 @@ GET /api/personal-collection/profile
   "slug": "yan-jing-shu-she",
   "displayName": "岩境書舍",
   "description": "收藏清代至民国时期的汉文回教古籍。",
+  "publicCollectorName": "岩境主人",
+  "themes": ["经训", "语言文字"],
+  "primaryEras": ["清代", "民国"],
+  "primaryRegion": "西北地区",
+  "collectingSinceYear": 2012,
+  "originStory": "从整理家藏旧籍开始，逐步关注相关古籍的版本与流传。",
+  "collaborationInterests": ["学术研究", "版本鉴定", "数字化合作"],
+  "acceptsMessages": true,
   "cover": {
     "mediaId": "media_001",
     "itemId": "item_001",
@@ -364,6 +388,14 @@ Content-Type: application/json
 {
   "displayName": "岩境書舍",
   "description": "收藏清代至民国时期的汉文回教古籍。",
+  "publicCollectorName": "岩境主人",
+  "themes": ["经训", "语言文字"],
+  "primaryEras": ["清代", "民国"],
+  "primaryRegion": "西北地区",
+  "collectingSinceYear": 2012,
+  "originStory": "从整理家藏旧籍开始，逐步关注相关古籍的版本与流传。",
+  "collaborationInterests": ["学术研究", "版本鉴定", "数字化合作"],
+  "acceptsMessages": true,
   "coverMediaId": "media_001"
 }
 ```
@@ -384,11 +416,19 @@ Content-Type: application/json
 
 - `displayName`：去除首尾空格，必填，2–40 字。
 - `description`：去除首尾空格，选填，最多 300 字。
+- `publicCollectorName`：选填，最多 20 字；为空时公开页使用账号公开名称回退。
+- `themes`：选填，最多 5 项；每项去除首尾空格、去重且不超过 20 字。
+- `primaryEras`：选填，最多 5 项；每项去除首尾空格并去重。
+- `primaryRegion`：选填，最多 60 字，不应填写详细地址。
+- `collectingSinceYear`：选填，四位整数，不得晚于当前年份。
+- `originStory`：选填，最多 500 字。
+- `collaborationInterests`：选填数组，当前允许 `学术研究`、`版本鉴定`、`数字化合作`、`展览借展`。
+- `acceptsMessages`：选填布尔值；`null` 表示未设置，只有明确为 `false` 时隐藏公开页联系入口。
 - `coverMediaId`：必须属于当前用户，并满足公开封面资格。
 - 收藏馆名称不要求唯一。
 - `slug` 唯一且稳定，本接口不可修改。
 
-资料保存后，PC-01、PC-02 和 PS-01 必须立即读取最新名称、简介和封面。
+资料保存后，PC-01、PC-02 和 PS-01 必须立即读取最新名称、简介、扩展资料和封面。PC-02 应返回全部扩展资料；PC-01 只需返回目录卡片实际使用的字段。
 
 封面所属内容被撤回、隐藏或删除，以及封面图片被删除时，后端必须清空 `coverMediaId`。
 

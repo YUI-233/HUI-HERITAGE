@@ -42,15 +42,23 @@ export default async function PublicCollectionPage({ params, searchParams }: Pub
         <div className="public-collection-profile-copy">
           <p>PRIVATE STEWARDSHIP · PUBLIC ACCESS</p>
           <h1>{collection.name}</h1>
-          <div className="public-collection-owner">收藏者 · {collection.ownerName}</div>
+          <div className="public-collection-owner">收藏者 · {collection.publicCollectorName || collection.ownerName}</div>
           <div className="public-collection-profile-description">{collection.description}</div>
+          {(collection.themes?.length || collection.primaryEras?.length || collection.primaryRegion || collection.collectingSinceYear) && <div className="public-collection-profile-facts">
+            {collection.themes?.length ? <div><span>收藏主题</span><p>{collection.themes.join(" · ")}</p></div> : null}
+            {collection.primaryEras?.length ? <div><span>主要年代</span><p>{collection.primaryEras.join(" · ")}</p></div> : null}
+            {collection.primaryRegion ? <div><span>主要地域</span><p>{collection.primaryRegion}</p></div> : null}
+            {collection.collectingSinceYear ? <div><span>开始收藏</span><p>{collection.collectingSinceYear} 年</p></div> : null}
+          </div>}
+          {collection.originStory && <details className="public-collection-origin"><summary>收藏缘起</summary><p>{collection.originStory}</p></details>}
+          {collection.collaborationInterests?.length ? <div className="public-collection-collaboration"><span>研究与合作意向</span><div>{collection.collaborationInterests.map((item) => <small key={item}>{item}</small>)}</div></div> : null}
           <dl>
             <div><dt>公开书籍</dt><dd>{collection.bookCount}</dd></div>
             <div><dt>公开藏品</dt><dd>{collection.artifactCount}</dd></div>
             <div><dt>馆藏合计</dt><dd>{collection.totalCount}</dd></div>
           </dl>
-          <div className="public-collection-profile-actions">
-            <Link href={`/messages?collection=${encodeURIComponent(collection.slug)}`}>联系收藏者</Link>
+          <div className={`public-collection-profile-actions${collection.acceptsMessages === false ? " two-actions" : ""}`}>
+            {collection.acceptsMessages !== false && <Link href={`/messages?collection=${encodeURIComponent(collection.slug)}`}>联系收藏者</Link>}
             <BookListExportButton slug={collection.slug} collectionName={collection.name} bookCount={collection.bookCount} />
             <Link href="/personal-collections/search">搜索全部公开馆藏</Link>
           </div>

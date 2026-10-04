@@ -11,6 +11,44 @@
 .public-book-list-export{display:grid;gap:5px}.public-book-list-export button{border:1px solid #a9322d;background:#fff;padding:9px 15px;color:#8f302a;font:13px "Noto Serif SC","Songti SC",serif;cursor:pointer}.public-book-list-export button:hover:not(:disabled){background:#f8efec}.public-book-list-export button:disabled{border-color:#cfc6bb;color:#9b9289;cursor:not-allowed}.public-book-list-export>small{color:#81766c;font-size:10px;text-align:center}.public-book-list-export>span{grid-column:1/-1;max-width:310px;color:#8f302a;font-size:11px;line-height:1.6}.public-book-list-export>span a{border:0!important;padding:0!important;background:transparent!important;color:#8f302a!important;text-decoration:underline;text-underline-offset:3px}@media(max-width:760px){.public-book-list-export button{width:100%}.public-book-list-export>span{max-width:none;text-align:center}}
 
 /* Collection directory redesign: horizontal archival tickets. */
+.public-collection-profile-actions{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:start;
+  gap:14px;
+  width:min(100%,720px);
+}
+.public-collection-profile-actions.two-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.public-collection-profile-actions>a,
+.public-book-list-export button{
+  box-sizing:border-box;
+  display:grid;
+  width:100%;
+  min-height:52px;
+  place-items:center;
+  padding:10px 14px;
+  text-align:center;
+  line-height:1.4;
+}
+.public-book-list-export{
+  width:100%;
+}
+.public-book-list-export>small,
+.public-book-list-export>span{
+  text-align:center;
+}
+@media(max-width:760px){
+  .public-collection-profile-actions,
+  .public-collection-profile-actions.two-actions{
+    grid-template-columns:1fr;
+    width:100%;
+  }
+}
+
+.public-collection-profile-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px;margin-top:22px}.public-collection-profile-facts>div{border-left:2px solid #c9aa7a;padding-left:11px}.public-collection-profile-facts span,.public-collection-collaboration>span{display:block;margin-bottom:4px;color:#8b8177;font-size:10px;letter-spacing:.08em}.public-collection-profile-facts p{margin:0;color:#493f37;font-size:13px;line-height:1.6}.public-collection-origin{margin-top:18px;border-top:1px solid #ddd5ca;padding-top:12px}.public-collection-origin summary{width:max-content;color:#8f302a;font-size:13px;cursor:pointer}.public-collection-origin p{max-width:670px;margin:10px 0 0;color:#665e56;font-size:13px;line-height:1.8}.public-collection-collaboration{margin-top:16px}.public-collection-collaboration>div{display:flex;flex-wrap:wrap;gap:7px}.public-collection-collaboration small{border:1px solid #d5cabd;background:rgba(255,255,255,.62);padding:5px 8px;color:#675d54;font-size:10px}@media(max-width:500px){.public-collection-profile-facts{grid-template-columns:1fr}}
+
 .public-collections-page .public-collections-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
 .public-collections-page .public-collection-card{display:grid;grid-template-columns:42% minmax(0,58%);min-height:286px;overflow:hidden;color:inherit;text-decoration:none}
 .public-collections-page .public-collection-cover{height:auto;min-height:286px}
