@@ -2,6 +2,7 @@ import { requirePermission } from "../../../../lib/admin-access";
 import { deleteStoredMedia } from "../../../../lib/media-storage";
 import { prisma } from "../../../../lib/prisma";
 import { cloudD1, usesCloudRuntime } from "../../../../lib/cloud-runtime";
+import { ensureCatalogReviewBaseline } from "../../../../lib/catalog-review-baseline";
 
 const guard = (request: Request) => requirePermission(request, "CATALOG_WRITE");
 
@@ -24,6 +25,10 @@ export async function DELETE(request: Request) {
     ? (await db.prepare("SELECT id, storage_key AS storageKey FROM cloud_media_assets WHERE id = ? AND record_id = ?").bind(id, recordId).all<{ id: string; storageKey: string }>()).results?.[0]
     : await prisma.mediaAsset.findFirst({ where: { id, OR: [{ bookId: recordId }, { artifactId: recordId }] } });
   if (!asset) return Response.json({ message: "未找到该资料的图片。" }, { status: 404 });
+  if (!db) {
+    const book = await prisma.book.findUnique({ where: { id: recordId }, select: { id: true } });
+    await ensureCatalogReviewBaseline(book ? "manuscript" : "artifact", recordId);
+  }
   if (db) await db.prepare("DELETE FROM cloud_media_assets WHERE id = ?").bind(asset.id).run();
   else await prisma.mediaAsset.delete({ where: { id: asset.id } });
   await deleteStoredMedia(asset.storageKey);

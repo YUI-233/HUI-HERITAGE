@@ -1,5 +1,6 @@
 import { requirePermission } from "../../../../../lib/admin-access";
 import { prisma } from "../../../../../lib/prisma";
+import { getCatalogReviewBaseline } from "../../../../../lib/catalog-review-baseline";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requirePermission(request, "CATALOG_REVIEW"); if (denied) return denied;
@@ -11,5 +12,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     ? await prisma.book.findFirst({ where: { id, status: "PENDING" }, include: { media } })
     : await prisma.artifact.findFirst({ where: { id, status: "PENDING" }, include: { media } });
   if (!record) return Response.json({ message: "未找到待审核资料。" }, { status: 404 });
-  return Response.json({ ...record, type }, { headers: { "Cache-Control": "no-store" } });
+  const baseline = await getCatalogReviewBaseline(type, id, record.reviewedAt);
+  const priorApproval = !baseline && await prisma.auditEvent.findFirst({ where: { entityType: type === "manuscript" ? "BOOK" : "ARTIFACT", entityId: id, action: "CATALOG_APPROVED" }, select: { id: true } });
+  return Response.json({ ...record, type, baseline, comparisonUnavailable: !baseline && Boolean(priorApproval || record.reviewedAt) }, { headers: { "Cache-Control": "no-store" } });
 }

@@ -2,6 +2,7 @@ import { requirePermission } from "../../../../lib/admin-access";
 import { writeStoredMedia } from "../../../../lib/media-storage";
 import { prisma } from "../../../../lib/prisma";
 import { cloudD1, usesCloudRuntime } from "../../../../lib/cloud-runtime";
+import { ensureCatalogReviewBaseline } from "../../../../lib/catalog-review-baseline";
 
 const imageTypes: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 const manuscriptFileTypes: Record<string, string> = { ...imageTypes, "application/pdf": "pdf" };
@@ -19,6 +20,7 @@ export async function POST(request: Request) {
     ? (await db!.prepare("SELECT id FROM cloud_catalog_records WHERE id = ? AND type = ?").bind(recordId, type).all<{ id: string }>()).results?.[0]
     : type === "manuscript" ? await prisma.book.findUnique({ where: { id: recordId } }) : await prisma.artifact.findUnique({ where: { id: recordId } });
   if (!exists) return Response.json({ error: "NOT_FOUND", message: "请先保存资料，再上传图片。" }, { status: 404 });
+  if (!cloud) await ensureCatalogReviewBaseline(type, recordId);
   const extension = allowedTypes[file.type]; const suffix = `${recordId}-${Date.now()}.${extension}`;
   const isBook = type === "manuscript";
   const isMemberDocument = file.type === "application/pdf";

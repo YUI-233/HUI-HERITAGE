@@ -62,7 +62,7 @@ function ContinuousPage({ pdf, page, fit, scale, columns, onVisible }: { pdf: Pd
       void (async () => {
         const source = await pdf.getPage(page);
         const original = source.getViewport({ scale: 1 });
-        const availableWidth = Math.max(120, (host.clientWidth - (columns === 2 ? 100 : 60)) / columns);
+        const availableWidth = Math.max(120, (host.clientWidth - 60) / columns);
         const availableHeight = Math.max(320, host.clientHeight - 64);
         const renderScale = fit === "custom" ? scale : fit === "width" ? availableWidth / original.width : Math.min(availableWidth / original.width, availableHeight / original.height);
         const viewport = source.getViewport({ scale: renderScale });

@@ -5,6 +5,7 @@ import { notifyUsers, publicationReviewers } from "./notifications";
 import { countCloudPendingCatalogReviews, deleteCloudAdminCatalogDraft, listCloudAdminCatalog, listCloudAdminCatalogDrafts, reviewCloudAdminCatalog, saveCloudAdminCatalog, withdrawCloudAdminCatalogSubmission } from "./cloud-admin-catalog";
 import { usesCloudRuntime } from "./cloud-runtime";
 import { deleteStoredMedia } from "./media-storage";
+import { ensureCatalogReviewBaseline } from "./catalog-review-baseline";
 
 export type AdminCatalogType = "manuscript" | "artifact";
 export type AdminCatalogInput = { id?: string; type: AdminCatalogType; title: string; language?: string; author?: string; dynasty?: string; eraDetail?: string; publicationDate?: string; imprintPublisher?: string; versionType?: string; binding?: string; volumeCount?: number; categories?: string[]; category?: string; era?: string; material?: string; description?: string; source?: string; keywords?: string[]; status?: ReviewStatus };
@@ -88,6 +89,7 @@ export async function saveAdminCatalog(input: AdminCatalogInput, submitter?: Wor
       : (await prisma.artifact.findUnique({ where: { id: input.id }, select: { status: true } }))?.status
     : undefined;
   const workflow = isSubmission && submitter ? { submittedByUserId: submitter.userId, submittedByLane: null, reviewedByUserId: null, reviewerLane: null, reviewComment: null, reviewedAt: null } : !input.id && submitter ? { submittedByUserId: submitter.userId, submittedByLane: null } : {};
+  if (input.id && previousStatus === "APPROVED") await ensureCatalogReviewBaseline(input.type, input.id);
   const common = { title: input.title, description: input.description, source: input.source, keywords: input.keywords ?? [], status: input.status ?? "DRAFT", ...workflow };
   if (input.type === "manuscript") {
     const data = { ...common, language: input.language, author: input.author, dynasty: input.dynasty, versionType: input.versionType };
