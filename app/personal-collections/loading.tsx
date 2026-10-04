@@ -19,7 +19,7 @@ export default function PublicCollectionsLoading() {
     <section className="public-collections-loading-results">
       <div className="public-collections-skeleton skeleton-section-title" />
       <div className="public-collections-loading-grid">
-        {Array.from({ length: 3 }, (_, index) => <div className="public-collections-loading-card" key={index}>
+        {Array.from({ length: 4 }, (_, index) => <div className="public-collections-loading-card" key={index}>
           <div className="public-collections-skeleton skeleton-card-image" />
           <div className="public-collections-skeleton skeleton-card-heading" />
           <div className="public-collections-skeleton skeleton-card-line" />
@@ -29,4 +29,3 @@ export default function PublicCollectionsLoading() {
     </section>
   </main>;
 }
-

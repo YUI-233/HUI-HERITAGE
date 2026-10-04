@@ -9,17 +9,17 @@ type PublicCollectionsPageProps = {
   searchParams: Promise<{ q?: string; page?: string }>;
 };
 
-function paginationHref(q: string, page: number) {
+function pageHref({ q, page }: { q: string; page?: number }) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
-  if (page > 1) params.set("page", String(page));
+  if (page && page > 1) params.set("page", String(page));
   const query = params.toString();
   return query ? `/personal-collections?${query}` : "/personal-collections";
 }
 
 export default async function PublicCollectionsPage({ searchParams }: PublicCollectionsPageProps) {
   const params = await searchParams;
-  const q = params.q?.trim() ?? "";
+  const q = params.q?.trim().slice(0, 100) ?? "";
   const requestedPage = Number.parseInt(params.page ?? "1", 10) || 1;
   const { items, pagination } = await getPublicCollections({ q, page: requestedPage, limit: 12 });
 
@@ -36,10 +36,9 @@ export default async function PublicCollectionsPage({ searchParams }: PublicColl
         <form action="/personal-collections" method="get" className="public-collections-search">
           <label htmlFor="collection-search">查找收藏馆</label>
           <div>
-            <input id="collection-search" name="q" type="search" defaultValue={q} placeholder="输入收藏馆或收藏者名称" />
+            <input id="collection-search" name="q" type="search" maxLength={100} defaultValue={q} placeholder="输入收藏馆或收藏者名称" />
             <button type="submit">搜索</button>
           </div>
-          <Link className="public-item-search-entry" href="/personal-collections/search">搜索所有公开书籍与文物 →</Link>
         </form>
       </section>
 
@@ -54,29 +53,23 @@ export default async function PublicCollectionsPage({ searchParams }: PublicColl
 
         {items.length ? <>
           <div className="public-collections-grid">
-            {items.map((collection, index) => <article className="public-collection-card" key={collection.slug}>
-              <Link className="public-collection-cover" href={`/personal-collections/${collection.slug}`} aria-label={`进入${collection.name}`}>
+            {items.map((collection, index) => <Link className="public-collection-card" href={`/personal-collections/${collection.slug}`} aria-label={`进入${collection.name}`} key={collection.slug}>
+              <div className="public-collection-cover">
                 {collection.cover ? <img src={collection.cover.url} alt="" style={{ objectPosition: index % 2 ? "68% center" : "32% center" }} /> : <div className="public-collection-cover-empty"><img src="/brand-mark.svg" alt="" /><span>馆藏封面待补</span></div>}
-                <span className="public-collection-number">{String(index + 1 + (pagination.page - 1) * pagination.limit).padStart(2, "0")}</span>
-              </Link>
-              <div className="public-collection-card-copy">
-                <p>收藏者 · {collection.ownerName}</p>
-                <h3><Link href={`/personal-collections/${collection.slug}`}>{collection.name}</Link></h3>
-                <div className="public-collection-description">{collection.description}</div>
-                <dl>
-                  <div><dt>书籍</dt><dd>{collection.bookCount}</dd></div>
-                  <div><dt>藏品</dt><dd>{collection.artifactCount}</dd></div>
-                  <div><dt>公开合计</dt><dd>{collection.totalCount}</dd></div>
-                </dl>
-                <Link className="public-collection-enter" href={`/personal-collections/${collection.slug}`}>进入收藏馆 <span aria-hidden="true">→</span></Link>
               </div>
-            </article>)}
+              <div className="public-collection-card-copy">
+                <div className="public-collection-card-top"><span>PERSONAL COLLECTION</span><b>{String(index + 1 + (pagination.page - 1) * pagination.limit).padStart(2, "0")}</b></div>
+                <div className="public-collection-card-title"><h3>{collection.name}</h3><p>收藏者 · {collection.ownerName}</p></div>
+                <div className="public-collection-description">{collection.description}</div>
+                <div className="public-collection-card-footer"><span className="public-collection-stats">书籍 <strong>{collection.bookCount}</strong><i>·</i> 文物 <strong>{collection.artifactCount}</strong><i>·</i> 共 <strong>{collection.totalCount}</strong> 件</span><span className="public-collection-enter">进入收藏馆 <i aria-hidden="true">→</i></span></div>
+              </div>
+            </Link>)}
           </div>
 
           {pagination.totalPages > 1 && <nav className="public-collections-pagination" aria-label="公开收藏馆分页">
-            <Link href={paginationHref(q, pagination.page - 1)} aria-disabled={pagination.page === 1 ? "true" : undefined}>上一页</Link>
-            {Array.from({ length: pagination.totalPages }, (_, index) => index + 1).map((page) => <Link href={paginationHref(q, page)} aria-current={page === pagination.page ? "page" : undefined} key={page}>{page}</Link>)}
-            <Link href={paginationHref(q, pagination.page + 1)} aria-disabled={pagination.page === pagination.totalPages ? "true" : undefined}>下一页</Link>
+            <Link href={pageHref({ q, page: pagination.page - 1 })} aria-disabled={pagination.page === 1 ? "true" : undefined}>上一页</Link>
+            {Array.from({ length: pagination.totalPages }, (_, index) => index + 1).map((page) => <Link href={pageHref({ q, page })} aria-current={page === pagination.page ? "page" : undefined} key={page}>{page}</Link>)}
+            <Link href={pageHref({ q, page: pagination.page + 1 })} aria-disabled={pagination.page === pagination.totalPages ? "true" : undefined}>下一页</Link>
           </nav>}
         </> : <div className="public-collections-empty">
           <img src="/brand-mark.svg" alt="" />
@@ -85,6 +78,7 @@ export default async function PublicCollectionsPage({ searchParams }: PublicColl
           {q && <Link href="/personal-collections">查看全部收藏馆</Link>}
         </div>}
       </section>
+
     </main>
   </>;
 }

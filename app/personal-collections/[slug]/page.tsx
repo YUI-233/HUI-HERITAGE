@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Breadcrumbs, PublicHeader } from "../../components/public-header";
 import { getPublicCollection } from "../public-collections-data";
+import { BookListExportButton } from "./book-list-export-button";
 import "../public-collections.css";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +49,11 @@ export default async function PublicCollectionPage({ params, searchParams }: Pub
             <div><dt>公开藏品</dt><dd>{collection.artifactCount}</dd></div>
             <div><dt>馆藏合计</dt><dd>{collection.totalCount}</dd></div>
           </dl>
-          <div className="public-collection-profile-actions"><Link href={`/messages?collection=${encodeURIComponent(collection.slug)}`}>联系收藏者</Link><Link href="/personal-collections/search">搜索全部公开馆藏</Link></div>
+          <div className="public-collection-profile-actions">
+            <Link href={`/messages?collection=${encodeURIComponent(collection.slug)}`}>联系收藏者</Link>
+            <BookListExportButton slug={collection.slug} collectionName={collection.name} bookCount={collection.bookCount} />
+            <Link href="/personal-collections/search">搜索全部公开馆藏</Link>
+          </div>
         </div>
       </section>
 
