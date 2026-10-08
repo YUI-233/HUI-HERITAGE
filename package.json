@@ -18,6 +18,7 @@
     "personal-import:verify": "tsx scripts/verify-personal-holdings-import.ts",
     "personal-collections:verify": "tsx scripts/verify-personal-collections-public.ts",
     "collection-api:verify": "tsx scripts/verify-collection-api-contracts.ts",
+    "collection-api:smoke": "tsx scripts/smoke-collection-api-http.ts",
     "review-workflow:verify": "tsx scripts/verify-import-review-workflow.ts",
     "holding-deletion:verify": "tsx scripts/verify-holding-deletion-workflow.ts",
     "catalog-review:verify": "tsx scripts/verify-catalog-review-workflow.ts",
