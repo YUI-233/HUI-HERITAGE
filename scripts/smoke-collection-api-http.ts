@@ -38,7 +38,7 @@ async function call(
   method: string,
   path: string,
   options: { userId?: string; body?: unknown } = {},
-): Promise<{ status: number; json: any }> {
+): Promise<{ status: number; json: any; headers: Headers; bytes: Buffer }> {
   const headers: Record<string, string> = {};
   if (options.userId) headers.cookie = cookieFor(options.userId);
   if (options.body !== undefined) headers["content-type"] = "application/json";
@@ -48,14 +48,19 @@ async function call(
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
-  const text = await response.text();
+  const bytes = Buffer.from(await response.arrayBuffer());
+  const text = bytes.toString("utf8");
   let json: any = null;
   try {
     json = text ? JSON.parse(text) : null;
   } catch {
     json = { raw: text.slice(0, 200) };
   }
-  return { status: response.status, json };
+  return { status: response.status, json, headers: response.headers, bytes };
+}
+
+async function makeCard(userId: string, status: string, tag: string): Promise<void> {
+  await prisma.borrowingCard.create({ data: { userId, cardNumber: `SM-${tag}-${suffix}`, status } });
 }
 
 const suffix = randomBytes(4).toString("hex");
@@ -210,6 +215,48 @@ async function main(): Promise<void> {
   // ---------- MSG-01 未读回显 ----------
   const listAAfter = await call("GET", "/api/messages/conversations", { userId: visitorB });
   check("MSG-01 B 侧出现未读 1", listAAfter.json?.items?.[0]?.unreadCount === 1, listAAfter.json?.items?.[0]);
+
+  // ---------- PC-03 书单导出 ----------
+  console.log("PC-03 公开书单导出");
+  await makeCard(visitorB, "ACTIVE", "b");
+  await makeCard(ownerA, "ACTIVE", "a");
+
+  const exportPath = `/api/personal-collections/${slugA}/books/export?format=xlsx`;
+  const anonymousExport = await call("GET", exportPath);
+  check("PC-03 未登录 -> 401 AUTH_REQUIRED", anonymousExport.status === 401 && anonymousExport.json?.code === "AUTH_REQUIRED", anonymousExport.json);
+
+  const okExport = await call("GET", exportPath, { userId: visitorB });
+  check("PC-03 有效借阅证 -> 200", okExport.status === 200, okExport.status);
+  check(
+    "PC-03 响应为 xlsx",
+    (okExport.headers.get("content-type") ?? "").includes("spreadsheetml.sheet"),
+    okExport.headers.get("content-type"),
+  );
+  check(
+    "PC-03 Content-Disposition 使用 UTF-8 文件名",
+    (okExport.headers.get("content-disposition") ?? "").includes("filename*=UTF-8''"),
+    okExport.headers.get("content-disposition"),
+  );
+  check("PC-03 文件体为 zip（PK 开头）", okExport.bytes[0] === 0x50 && okExport.bytes[1] === 0x4b, okExport.bytes.length);
+
+  const badFormat = await call("GET", `/api/personal-collections/${slugA}/books/export?format=csv`, { userId: visitorB });
+  check(
+    "PC-03 非 xlsx 格式 -> 400 UNSUPPORTED_EXPORT_FORMAT",
+    badFormat.status === 400 && badFormat.json?.code === "UNSUPPORTED_EXPORT_FORMAT",
+    badFormat.json,
+  );
+  const ownExport = await call("GET", exportPath, { userId: ownerA });
+  check(
+    "PC-03 导出自己的馆 -> 403 OWN_COLLECTION_EXPORT_NOT_ALLOWED",
+    ownExport.status === 403 && ownExport.json?.code === "OWN_COLLECTION_EXPORT_NOT_ALLOWED",
+    ownExport.json,
+  );
+  const missingExport = await call("GET", `/api/personal-collections/no-such-${suffix}/books/export`, { userId: visitorB });
+  check(
+    "PC-03 收藏馆不存在 -> 404 COLLECTION_NOT_FOUND",
+    missingExport.status === 404 && missingExport.json?.code === "COLLECTION_NOT_FOUND",
+    missingExport.json,
+  );
 
   console.log(`\n通过 ${passed} 项，失败 ${failures.length} 项`);
   if (failures.length) {

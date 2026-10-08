@@ -19,6 +19,7 @@
     "personal-collections:verify": "tsx scripts/verify-personal-collections-public.ts",
     "collection-api:verify": "tsx scripts/verify-collection-api-contracts.ts",
     "collection-api:smoke": "tsx scripts/smoke-collection-api-http.ts",
+    "book-export:verify": "tsx scripts/verify-collection-book-export.ts",
     "review-workflow:verify": "tsx scripts/verify-import-review-workflow.ts",
     "holding-deletion:verify": "tsx scripts/verify-holding-deletion-workflow.ts",
     "catalog-review:verify": "tsx scripts/verify-catalog-review-workflow.ts",
@@ -31,9 +32,9 @@
     "cloud:seed:generate": "tsx scripts/generate-cloud-seed.ts",
     "dev:postgres": "node scripts/run-next-postgres.cjs dev",
     "build:postgres": "next build",
-    "start:postgres": "next start --port 3014"
-    ,"db:start:local": "powershell -ExecutionPolicy Bypass -File scripts/start-local-postgres.ps1"
-    ,"dev:local": "npm run db:start:local && npm run dev:postgres"
+    "start:postgres": "next start --port 3014",
+    "db:start:local": "powershell -ExecutionPolicy Bypass -File scripts/start-local-postgres.ps1",
+    "dev:local": "npm run db:start:local && npm run dev:postgres"
   },
   "dependencies": {
     "@ditojs/tiptap-footnotes": "^3.0.0",
