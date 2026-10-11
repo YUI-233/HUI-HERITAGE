@@ -10,42 +10,44 @@ datasource db {
 }
 
 model User {
-  id                               String                   @id @default(cuid())
-  email                            String                   @unique
-  role                             UserRole                 @default(MEMBER)
-  createdAt                        DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  displayName                      String?                  @map("display_name")
-  passwordHash                     String?                  @map("password_hash")
-  isActive                         Boolean                  @default(true) @map("is_active")
-  reviewLane                       WorkflowLane?            @map("review_lane")
-  groupId                          String?                  @map("group_id")
-  emailVerifiedAt                  DateTime?                @map("email_verified_at")
-  passwordChangedAt                DateTime?                @map("password_changed_at")
-  reviewedArtifacts                Artifact[]               @relation("ArtifactReviewer")
-  submittedArtifacts               Artifact[]               @relation("ArtifactSubmitter")
-  reviewedBooks                    Book[]                   @relation("BookReviewer")
-  submittedBooks                   Book[]                   @relation("BookSubmitter")
+  id                               String                     @id @default(cuid())
+  email                            String                     @unique
+  role                             UserRole                   @default(MEMBER)
+  createdAt                        DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  displayName                      String?                    @map("display_name")
+  passwordHash                     String?                    @map("password_hash")
+  isActive                         Boolean                    @default(true) @map("is_active")
+  reviewLane                       WorkflowLane?              @map("review_lane")
+  groupId                          String?                    @map("group_id")
+  emailVerifiedAt                  DateTime?                  @map("email_verified_at")
+  passwordChangedAt                DateTime?                  @map("password_changed_at")
+  reviewedArtifacts                Artifact[]                 @relation("ArtifactReviewer")
+  submittedArtifacts               Artifact[]                 @relation("ArtifactSubmitter")
+  reviewedBooks                    Book[]                     @relation("BookReviewer")
+  submittedBooks                   Book[]                     @relation("BookSubmitter")
   borrowingCard                    BorrowingCard?
   borrowingRecords                 BorrowingRecord[]
-  reviewedCatalogDeletionRequests  CatalogDeletionRequest[] @relation("CatalogDeletionReviewer")
-  submittedCatalogDeletionRequests CatalogDeletionRequest[] @relation("CatalogDeletionSubmitter")
+  reviewedCatalogDeletionRequests  CatalogDeletionRequest[]   @relation("CatalogDeletionReviewer")
+  submittedCatalogDeletionRequests CatalogDeletionRequest[]   @relation("CatalogDeletionSubmitter")
   emailActionTokens                EmailActionToken[]
-  reviewedImportBatches            ImportBatch[]            @relation("ImportBatchReviewer")
-  submittedImportBatches           ImportBatch[]            @relation("ImportBatchSubmitter")
+  reviewedImportBatches            ImportBatch[]              @relation("ImportBatchReviewer")
+  submittedImportBatches           ImportBatch[]              @relation("ImportBatchSubmitter")
   notifications                    Notification[]
   personalItems                    PersonalCollectionItem[]
-  reviewedPersonalItems            PersonalCollectionItem[] @relation("PersonalItemReviewer")
-  reviewedResearchReviewRequests   ResearchReviewRequest[]  @relation("ResearchReviewReviewer")
-  submittedResearchReviewRequests  ResearchReviewRequest[]  @relation("ResearchReviewSubmitter")
-  group                            UserGroup?               @relation(fields: [groupId], references: [id])
+  personalCollectionProfile        PersonalCollectionProfile?
+  reviewedPersonalItems            PersonalCollectionItem[]   @relation("PersonalItemReviewer")
+  reviewedResearchReviewRequests   ResearchReviewRequest[]    @relation("ResearchReviewReviewer")
+  submittedResearchReviewRequests  ResearchReviewRequest[]    @relation("ResearchReviewSubmitter")
+  group                            UserGroup?                 @relation(fields: [groupId], references: [id])
   media                            MediaAsset[]
   personalCollectionProfile        PersonalCollectionProfile? @relation("UserPersonalCollectionProfile")
   auditEvents                      AuditEvent[]
-  submittedHoldingRevisions        HoldingRevision[]         @relation("HoldingRevisionSubmitter")
-  reviewedHoldingRevisions         HoldingRevision[]         @relation("HoldingRevisionReviewer")
-  conversationsAsOne               Conversation[]            @relation("ConversationParticipantOne")
-  conversationsAsTwo               Conversation[]            @relation("ConversationParticipantTwo")
-  sentMessages                     Message[]                 @relation("MessageSender")
+  submittedHoldingRevisions        HoldingRevision[]          @relation("HoldingRevisionSubmitter")
+  reviewedHoldingRevisions         HoldingRevision[]          @relation("HoldingRevisionReviewer")
+  conversationsAsOne               Conversation[]              @relation("ConversationParticipantOne")
+  conversationsAsTwo               Conversation[]              @relation("ConversationParticipantTwo")
+  sentMessages                     Message[]                   @relation("MessageSender")
+
 
   @@map("users")
 }
@@ -111,6 +113,29 @@ model PersonalCollectionItem {
   @@unique([ownerId, serialNumber])
   @@index([ownerId, type, createdAt])
   @@map("personal_collection_items")
+}
+
+model PersonalCollectionProfile {
+  id                     String      @id @default(cuid())
+  ownerId                String      @unique @map("owner_id")
+  slug                   String      @unique
+  displayName            String      @map("display_name")
+  description            String?
+  publicCollectorName    String?     @map("public_collector_name")
+  themes                 String[]    @default([])
+  primaryEras            String[]    @default([]) @map("primary_eras")
+  primaryRegion          String?     @map("primary_region")
+  collectingSinceYear    Int?        @map("collecting_since_year")
+  originStory            String?     @map("origin_story")
+  collaborationInterests String[]    @default([]) @map("collaboration_interests")
+  acceptsMessages        Boolean?    @map("accepts_messages")
+  coverMediaId           String?     @unique @map("cover_media_id")
+  createdAt              DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  owner                  User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  coverMedia             MediaAsset? @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
+
+  @@map("personal_collection_profiles")
 }
 
 model UserGroup {
@@ -241,38 +266,39 @@ model CatalogDeletionRequest {
 }
 
 model MediaAsset {
-  id                       String                  @id @default(cuid())
-  storageKey               String                  @unique @map("storage_key")
-  mimeType                 String                  @map("mime_type")
-  visibility               MediaVisibility         @default(PRIVATE)
-  bookId                   String?                 @map("book_id")
-  artifactId               String?                 @map("artifact_id")
-  uploadedById             String?                 @map("uploaded_by_id")
-  createdAt                DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  personalCollectionItemId String?                 @map("personal_collection_item_id")
-  personalCollectionItem   PersonalCollectionItem? @relation(fields: [personalCollectionItemId], references: [id], onDelete: Cascade)
-  book                     Book?                   @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  artifact                 Artifact?               @relation(fields: [artifactId], references: [id], onDelete: Cascade)
-  uploadedBy               User?                   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  id                       String                     @id @default(cuid())
+  storageKey               String                     @unique @map("storage_key")
+  mimeType                 String                     @map("mime_type")
+  visibility               MediaVisibility            @default(PRIVATE)
+  bookId                   String?                    @map("book_id")
+  artifactId               String?                    @map("artifact_id")
+  uploadedById             String?                    @map("uploaded_by_id")
+  createdAt                DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  personalCollectionItemId String?                    @map("personal_collection_item_id")
+  personalCollectionItem   PersonalCollectionItem?    @relation(fields: [personalCollectionItemId], references: [id], onDelete: Cascade)
+  collectionProfileCover   PersonalCollectionProfile?
+  book                     Book?                      @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  artifact                 Artifact?                  @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  uploadedBy               User?                      @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
 
   @@map("media_assets")
 }
 
 model Holding {
-  id          String           @id @default(cuid())
+  id          String            @id @default(cuid())
   institution String
   region      String
   origin      CollectionOrigin
-  callNumber  String?          @map("call_number")
-  catalogUrl  String?          @map("catalog_url")
+  callNumber  String?           @map("call_number")
+  catalogUrl  String?           @map("catalog_url")
   description String?
-  status      ReviewStatus     @default(APPROVED)
-  bookId      String?          @map("book_id")
-  artifactId  String?          @map("artifact_id")
-  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  book        Book?            @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  artifact    Artifact?        @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  status      ReviewStatus      @default(APPROVED)
+  bookId      String?           @map("book_id")
+  artifactId  String?           @map("artifact_id")
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  book        Book?             @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  artifact    Artifact?         @relation(fields: [artifactId], references: [id], onDelete: Cascade)
   revisions   HoldingRevision[]
 
   @@index([institution])

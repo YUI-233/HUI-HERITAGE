@@ -27,6 +27,7 @@
     "auth:verify": "tsx scripts/verify-auth-admin.ts",
     "member-media:verify": "tsx scripts/verify-member-media.ts",
     "borrowing:verify": "tsx scripts/verify-borrowing.ts",
+    "profile:verify": "tsx scripts/verify-personal-collection-profile.ts",
     "cloud:export:public": "tsx scripts/export-cloud-public-data.ts",
     "cloud:seed:generate": "tsx scripts/generate-cloud-seed.ts",
     "dev:postgres": "node scripts/run-next-postgres.cjs dev",

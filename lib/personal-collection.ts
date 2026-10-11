@@ -2,7 +2,12 @@ import { PersonalItemType, Prisma, ReviewStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { parseCsvDocument } from "./csv";
 import { notifyUsers, publicationReviewers } from "./notifications";
-import { clearStaleCoverByItem, clearStaleCoverMedia } from "./personal-collection-profile";
+import { randomUUID } from "node:crypto";
+import { parseCsvDocument } from "./csv";
+import { notifyUsers, publicationReviewers } from "./notifications";
+import { clearCollectionCoverForItem, clearStaleCoverByItem, clearStaleCoverMedia } from "./personal-collection-profile";
+import { prisma } from "./prisma";
+
 import { prisma } from "./prisma";
 
 export type PersonalItemInput = {
@@ -195,11 +200,10 @@ export async function deletePersonalItem(ownerId: string, id: string, type: Pers
 export async function submitPersonalItem(ownerId: string, id: string) {
   const candidate = await prisma.personalCollectionItem.findFirst({
     where: { id, ownerId },
-    select: { status: true, _count: { select: { media: true } } },
+    select: { status: true },
   });
   if (!candidate) throw new Error("未找到可申请公开的个人收藏记录。");
   if (!(["DRAFT", "NEEDS_REVISION", "REJECTED"] as ReviewStatus[]).includes(candidate.status)) throw new Error("该记录当前不能申请公开；请先确认它尚未处于审核中。");
-  if (!candidate._count.media) throw new Error("请最少上传一张图片");
   const rows = await prisma.$queryRaw<PersonalItemRecord[]>(Prisma.sql`
     UPDATE personal_collection_items
     SET status = 'PENDING'::review_status, is_public = false, review_comment = NULL,
@@ -224,11 +228,10 @@ export async function submitPersonalItem(ownerId: string, id: string) {
 export async function submitPersonalBooks(ownerId: string) {
   const candidates = await prisma.personalCollectionItem.findMany({
     where: { ownerId, type: "BOOK", status: { in: ["DRAFT", "NEEDS_REVISION", "REJECTED"] } },
-    select: { id: true, _count: { select: { media: true } } },
+    select: { id: true },
   });
-  const eligibleIds = candidates.filter((item) => item._count.media > 0).map((item) => item.id);
-  const skippedWithoutImage = candidates.length - eligibleIds.length;
-  if (!eligibleIds.length) return { submitted: 0, skippedWithoutImage };
+  const eligibleIds = candidates.map((item) => item.id);
+  if (!eligibleIds.length) return { submitted: 0, skippedWithoutImage: 0 };
   const rows = await prisma.$queryRaw<Array<{ id: string; title: string }>>(Prisma.sql`
     UPDATE personal_collection_items
     SET status = 'PENDING'::review_status, is_public = false, review_comment = NULL,
@@ -241,7 +244,7 @@ export async function submitPersonalBooks(ownerId: string) {
     kind: "PERSONAL_PUBLICATION_REQUEST", title: "新的公开申请",
     message: `有 ${rows.length} 条个人藏书申请公开，等待审核。`, href: "/admin/personal-review",
   }) : { count: 0 };
-  return { submitted: rows.length, skippedWithoutImage, reviewersNotified: notification.count };
+  return { submitted: rows.length, skippedWithoutImage: 0, reviewersNotified: notification.count };
 }
 
 export async function withdrawPersonalItem(ownerId: string, id: string) {
@@ -274,7 +277,14 @@ export async function setPersonalItemPublic(ownerId: string, id: string, isPubli
   `);
   if (!rows[0]) throw new Error(isPublic ? "仅审核通过的记录可以公开。" : "未找到可调整的个人收藏记录。");
   await prisma.mediaAsset.updateMany({ where: { personalCollectionItemId: id }, data: { visibility: isPublic ? "PUBLIC" : "PRIVATE" } });
-  if (!isPublic) await clearStaleCoverByItem(ownerId, id);
+  if (!rows[0]) throw new Error(isPublic ? "仅审核通过的记录可以公开。" : "未找到可调整的个人收藏记录。");
+  await prisma.mediaAsset.updateMany({ where: { personalCollectionItemId: id }, data: { visibility: isPublic ? "PUBLIC" : "PRIVATE" } });
+
+  if (!isPublic) {
+    await clearStaleCoverByItem(ownerId, id);
+    await clearCollectionCoverForItem(ownerId, id);
+  }
+
   return rows[0];
 }
 
@@ -325,6 +335,7 @@ export async function reviewPersonalItem(reviewerId: string, id: string, decisio
   `);
   if (!rows[0]) throw new Error("未找到可审核的公开申请；系统不允许审核本人提交的记录。");
   await prisma.mediaAsset.updateMany({ where: { personalCollectionItemId: id }, data: { visibility: decision === "APPROVED" ? "PUBLIC" : "PRIVATE" } });
+  if (decision !== "APPROVED" && rows[0].ownerId) await clearCollectionCoverForItem(rows[0].ownerId, id);
   const titles = {
     APPROVED: "公开申请已通过",
     NEEDS_REVISION: "公开申请需要补充",

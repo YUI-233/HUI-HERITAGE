@@ -1,5 +1,5 @@
+import { randomBytes, createHash } from "node:crypto";
 import { Prisma, ReviewStatus } from "@prisma/client";
-import { randomBytes } from "node:crypto";
 import { prisma } from "./prisma";
 
 /** 带 HTTP 状态的业务错误，供路由层映射。 */
@@ -12,8 +12,7 @@ export class ProfileError extends Error {
 }
 
 const PUBLIC_ITEM = { status: "APPROVED" as ReviewStatus, isPublic: true };
-const PUBLIC_MEDIA_URL = (itemId: string, mediaId: string) =>
-  `/api/personal-collection/public/${itemId}/media/${mediaId}`;
+const PUBLIC_MEDIA_URL = (itemId: string, mediaId: string) => `/api/personal-collection/public/${itemId}/media/${mediaId}`;
 
 export type CollectionCover = { mediaId: string; itemId: string; url: string };
 export type ProfileResponse = {
@@ -21,11 +20,16 @@ export type ProfileResponse = {
   displayName: string;
   description: string | null;
   cover: CollectionCover | null;
+  publicCollectorName?: string | null;
+  themes?: string[];
+  primaryEras?: string[];
+  primaryRegion?: string | null;
+  collectingSinceYear?: number | null;
+  originStory?: string | null;
+  collaborationInterests?: string[];
+  acceptsMessages?: boolean | null;
 };
 
-// ---------- slug 生成 ----------
-
-/** 与公开路由静态段冲突的保留字，禁止作为 slug（否则会被 /api/personal-collections/items 遮蔽）。 */
 const RESERVED_SLUGS = new Set(["items"]);
 
 function slugify(input: string): string {
@@ -38,7 +42,6 @@ function slugify(input: string): string {
     .replace(/^-|-$/g, "");
 }
 
-/** 生成唯一、稳定的 slug；名称无法转写时回退到随机串。 */
 async function generateUniqueSlug(displayName: string): Promise<string> {
   const base = slugify(displayName) || "collection";
   let candidate = RESERVED_SLUGS.has(base) ? `${base}-collection` : base;
@@ -56,13 +59,47 @@ function defaultDisplayName(userDisplayName: string | null): string {
   return userDisplayName ? `${userDisplayName} 的收藏馆` : "我的收藏馆";
 }
 
-// ---------- 封面解析 ----------
+function text(value: unknown, maximum: number) {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") throw new Error("资料字段格式不正确。");
+  const result = value.trim();
+  if (result.length > maximum) throw new Error(`填写内容不能超过 ${maximum} 个字符。`);
+  return result || null;
+}
 
-/** 优先使用指定 coverMediaId（须为本人 APPROVED+isPublic 内容的 PUBLIC 图），否则取最新公开内容的第一张 PUBLIC 图。 */
-async function resolveCollectionCover(
-  ownerId: string,
-  coverMediaId: string | null,
-): Promise<CollectionCover | null> {
+function terms(value: unknown, label: string, maximumItems: number, maximumLength = 20) {
+  if (value === null || value === undefined) return [];
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) throw new Error(`${label}格式不正确。`);
+  const result = [...new Set(value.map((item) => item.trim()).filter(Boolean))];
+  if (result.length > maximumItems) throw new Error(`${label}最多填写 ${maximumItems} 项。`);
+  if (result.some((item) => item.length > maximumLength)) throw new Error(`${label}的每一项不能超过 ${maximumLength} 个字符。`);
+  return result;
+}
+
+function slugBase(displayName: string, ownerId: string) {
+  const readable = displayName
+    .normalize("NFKD")
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 48);
+  if (readable.length >= 2) return readable;
+  return `collection-${createHash("sha256").update(ownerId).digest("hex").slice(0, 12)}`;
+}
+
+async function availableSlug(displayName: string, ownerId: string) {
+  const base = slugBase(displayName, ownerId);
+  for (let index = 0; index < 100; index += 1) {
+    const slug = index ? `${base}-${index + 1}` : base;
+    const existing = await prisma.personalCollectionProfile.findUnique({ where: { slug }, select: { ownerId: true } });
+    if (!existing || existing.ownerId === ownerId) return slug;
+  }
+  return `${base}-${createHash("sha256").update(`${ownerId}-${Date.now()}`).digest("hex").slice(0, 8)}`;
+}
+
+async function resolveCollectionCover(ownerId: string, coverMediaId: string | null): Promise<CollectionCover | null> {
   if (coverMediaId) {
     const media = await prisma.mediaAsset.findFirst({
       where: {
@@ -91,22 +128,73 @@ async function resolveCollectionCover(
   return null;
 }
 
-async function toProfileResponse(
-  profile: { slug: string; displayName: string; description: string | null; coverMediaId: string | null },
-  ownerId: string,
-): Promise<ProfileResponse> {
-  const cover = await resolveCollectionCover(ownerId, profile.coverMediaId);
+function validCover(profile: any) {
+  const media = profile.coverMedia;
+  const item = media?.personalCollectionItem;
+  return Boolean(media && item && item.ownerId === profile.ownerId && item.status === "APPROVED" && item.isPublic && media.visibility === "PUBLIC");
+}
+
+export function serializeCollectionProfile(profile: any) {
+  const cover = validCover(profile) && profile.coverMedia?.personalCollectionItemId ? {
+    mediaId: profile.coverMedia.id,
+    itemId: profile.coverMedia.personalCollectionItemId,
+    url: `/api/personal-collection/public/${profile.coverMedia.personalCollectionItemId}/media/${profile.coverMedia.id}`,
+  } : null;
+
   return {
     slug: profile.slug,
     displayName: profile.displayName,
-    description: profile.description,
+    description: profile.description ?? null,
+    publicCollectorName: profile.publicCollectorName ?? null,
+    themes: profile.themes ?? [],
+    primaryEras: profile.primaryEras ?? [],
+    primaryRegion: profile.primaryRegion ?? null,
+    collectingSinceYear: profile.collectingSinceYear ?? null,
+    originStory: profile.originStory ?? null,
+    collaborationInterests: profile.collaborationInterests ?? [],
+    acceptsMessages: profile.acceptsMessages ?? null,
     cover,
   };
 }
 
-// ---------- Profile 读写（Issue #2） ----------
+  return {
+    slug: profile.slug,
+    displayName: profile.displayName,
+    description: profile.description,
+return {
+    slug: profile.slug,
+    displayName: profile.displayName,
+    description: profile.description,
+    publicCollectorName: profile.publicCollectorName ?? null,
+    themes: profile.themes ?? [],
+    primaryEras: profile.primaryEras ?? [],
+    primaryRegion: profile.primaryRegion ?? null,
+    collectingSinceYear: profile.collectingSinceYear ?? null,
+    originStory: profile.originStory ?? null,
+    collaborationInterests: profile.collaborationInterests ?? [],
+    acceptsMessages: profile.acceptsMessages ?? null,
+    cover,
+  };
+}
 
-/** 读取当前用户的资料；不存在则创建默认资料（默认名 = “{displayName} 的收藏馆”）。 */
+async function toProfileResponse(profile: any, ownerId: string): Promise<ProfileResponse> {
+  const cover = await resolveCollectionCover(ownerId, profile.coverMediaId);
+  return {
+    slug: profile.slug,
+    displayName: profile.displayName,
+    description: profile.description ?? null,
+    publicCollectorName: profile.publicCollectorName ?? null,
+    themes: profile.themes ?? [],
+    primaryEras: profile.primaryEras ?? [],
+    primaryRegion: profile.primaryRegion ?? null,
+    collectingSinceYear: profile.collectingSinceYear ?? null,
+    originStory: profile.originStory ?? null,
+    collaborationInterests: profile.collaborationInterests ?? [],
+    acceptsMessages: profile.acceptsMessages ?? null,
+    cover,
+  };
+}
+
 export async function getOrCreateProfile(ownerId: string): Promise<ProfileResponse> {
   const existing = await prisma.personalCollectionProfile.findUnique({ where: { ownerId } });
   if (existing) return toProfileResponse(existing, ownerId);
@@ -123,9 +211,16 @@ export type ProfileUpdateInput = {
   displayName?: unknown;
   description?: unknown;
   coverMediaId?: unknown;
+  publicCollectorName?: unknown;
+  themes?: unknown;
+  primaryEras?: unknown;
+  primaryRegion?: unknown;
+  collectingSinceYear?: unknown;
+  originStory?: unknown;
+  collaborationInterests?: unknown;
+  acceptsMessages?: unknown;
 };
 
-/** 保存收藏馆设置：校验名称/简介长度、封面归属与公开状态，upsert 资料。 */
 export async function updateProfile(ownerId: string, input: ProfileUpdateInput): Promise<ProfileResponse> {
   const displayName = typeof input.displayName === "string" ? input.displayName.trim() : "";
   if (!displayName || displayName.length < 2 || displayName.length > 40) {
@@ -170,10 +265,7 @@ export async function updateProfile(ownerId: string, input: ProfileUpdateInput):
   return toProfileResponse(profile, ownerId);
 }
 
-/** 当前用户可作为公开封面的图片（本人 APPROVED+isPublic 内容的 PUBLIC 图）。 */
-export async function listCoverOptions(ownerId: string): Promise<
-  Array<{ mediaId: string; itemId: string; itemTitle: string; itemType: string; url: string }>
-> {
+export async function listCoverOptions(ownerId: string): Promise<Array<{ mediaId: string; itemId: string; itemTitle: string; itemType: string; url: string }>> {
   const items = await prisma.personalCollectionItem.findMany({
     where: { ownerId, ...PUBLIC_ITEM },
     select: {
@@ -198,9 +290,6 @@ export async function listCoverOptions(ownerId: string): Promise<
   return options;
 }
 
-// ---------- 封面失效清理（挂钩审查/撤回/删除） ----------
-
-/** 指定 media 被删除/变为非公开时，若它正是某收藏馆封面则清空引用。 */
 export async function clearStaleCoverMedia(ownerId: string, mediaId: string): Promise<void> {
   await prisma.personalCollectionProfile.updateMany({
     where: { ownerId, coverMediaId: mediaId },
@@ -208,7 +297,6 @@ export async function clearStaleCoverMedia(ownerId: string, mediaId: string): Pr
   });
 }
 
-/** 整件内容被撤回/删除公开时，若其任意图片是封面则清空引用。 */
 export async function clearStaleCoverByItem(ownerId: string, itemId: string): Promise<void> {
   const profile = await prisma.personalCollectionProfile.findUnique({
     where: { ownerId },
@@ -224,11 +312,124 @@ export async function clearStaleCoverByItem(ownerId: string, itemId: string): Pr
   }
 }
 
-// ---------- 公开聚合查询（Issue #1） ----------
+export async function ensureCollectionProfile(owner: { id: string; displayName: string | null; email: string }) {
+  const existing = await prisma.personalCollectionProfile.findUnique({
+    where: { ownerId: owner.id },
+    include: { coverMedia: { include: { personalCollectionItem: true } } },
+  });
+  if (existing) return existing;
+  const displayName = owner.displayName?.trim() || "个人收藏馆";
+  const slug = await availableSlug(displayName, owner.id);
+  try {
+    return await prisma.personalCollectionProfile.create({
+      data: { ownerId: owner.id, slug, displayName },
+      include: { coverMedia: { include: { personalCollectionItem: true } } },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      const concurrent = await prisma.personalCollectionProfile.findUnique({
+        where: { ownerId: owner.id },
+        include: { coverMedia: { include: { personalCollectionItem: true } } },
+      });
+      if (concurrent) return concurrent;
+    }
+    throw error;
+  }
+}
+
+export async function getCollectionProfile(owner: { id: string; displayName: string | null; email: string }) {
+  return serializeCollectionProfile(await ensureCollectionProfile(owner));
+}
+
+export async function updateCollectionProfile(owner: { id: string; displayName: string | null; email: string }, body: Record<string, unknown>) {
+  const displayName = text(body.displayName, 40);
+  if (!displayName || displayName.length < 2) throw new Error("收藏馆名称应为 2–40 个字符。");
+  const publicCollectorName = text(body.publicCollectorName, 20);
+  const themes = terms(body.themes, "收藏主题", 5);
+  const primaryEras = terms(body.primaryEras, "主要收藏年代", 5);
+  const primaryRegion = text(body.primaryRegion, 60);
+  const originStory = text(body.originStory, 500);
+  const collaborationInterests = terms(body.collaborationInterests, "研究与合作意向", 4);
+  if (collaborationInterests.some((item) => item !== "学术研究" && item !== "版本鉴定" && item !== "数字化合作" && item !== "展览借展")) {
+    throw new Error("研究与合作意向包含不支持的选项。");
+  }
+  const year = body.collectingSinceYear;
+  const collectingSinceYear = year === null || year === undefined || year === "" ? null : Number(year);
+  if (collectingSinceYear !== null && (!Number.isInteger(collectingSinceYear) || collectingSinceYear < 1000 || collectingSinceYear > new Date().getFullYear())) {
+    throw new Error("开始收藏年份应为不晚于今年的四位年份。");
+  }
+  if (body.acceptsMessages !== null && body.acceptsMessages !== undefined && typeof body.acceptsMessages !== "boolean") {
+    throw new Error("私信设置格式不正确。");
+  }
+  const coverMediaId = body.coverMediaId === null || body.coverMediaId === undefined || body.coverMediaId === "" ? null : String(body.coverMediaId);
+  if (coverMediaId) {
+    const cover = await prisma.mediaAsset.findFirst({
+      where: {
+        id: coverMediaId,
+        visibility: "PUBLIC",
+        mimeType: { startsWith: "image/" },
+        personalCollectionItem: { ownerId: owner.id, status: "APPROVED", isPublic: true },
+      },
+      select: { id: true },
+    });
+    if (!cover) throw new Error("所选图片不具备公开封面资格，请重新选择。");
+  }
+  await ensureCollectionProfile(owner);
+  const updated = await prisma.personalCollectionProfile.update({
+    where: { ownerId: owner.id },
+    data: {
+      displayName,
+      description: text(body.description, 300),
+      publicCollectorName,
+      themes,
+      primaryEras,
+      primaryRegion,
+      collectingSinceYear,
+      originStory,
+      collaborationInterests,
+      acceptsMessages: body.acceptsMessages === undefined ? null : (body.acceptsMessages as boolean | null),
+      coverMediaId,
+    },
+    include: { coverMedia: { include: { personalCollectionItem: true } } },
+  });
+  return serializeCollectionProfile(updated);
+}
+
+export async function listCollectionCoverOptions(ownerId: string) {
+  const items = await prisma.personalCollectionItem.findMany({
+    where: { ownerId, status: "APPROVED", isPublic: true },
+    select: {
+      id: true,
+      title: true,
+      type: true,
+      media: { where: { visibility: "PUBLIC", mimeType: { startsWith: "image/" } }, orderBy: { createdAt: "asc" }, select: { id: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+  return items.flatMap((item) => item.media.map((media) => ({
+    mediaId: media.id,
+    itemId: item.id,
+    itemTitle: item.title,
+    itemType: item.type,
+    url: `/api/personal-collection/public/${item.id}/media/${media.id}`,
+  })));
+}
+
+export async function clearCollectionCoverForItem(ownerId: string, itemId: string) {
+  const media = await prisma.mediaAsset.findMany({ where: { personalCollectionItemId: itemId }, select: { id: true } });
+  if (!media.length) return;
+  await prisma.personalCollectionProfile.updateMany({
+    where: { ownerId, coverMediaId: { in: media.map((item) => item.id) } },
+    data: { coverMediaId: null },
+  });
+}
+
+    cover,
+  };
+}
 
 export type PublicCollectionQuery = { q: string; page: number; limit: number };
 
-/** 公开收藏馆目录：仅包含至少一件 APPROVED+isPublic 内容的用户。 */
 export async function listPublicCollections({ q, page, limit }: PublicCollectionQuery) {
   const groups = await prisma.personalCollectionItem.groupBy({
     by: ["ownerId", "type"],
@@ -263,7 +464,6 @@ export async function listPublicCollections({ q, page, limit }: PublicCollection
   const profileMap = new Map(profiles.map((p) => [p.ownerId, p]));
   const latestMap = new Map(latest.map((l) => [l.ownerId, l.updatedAt]));
 
-  // 为缺少资料记录的旧用户补建默认资料（确保目录可链接到 slug）。
   const missing = ownerIds.filter((id) => !profileMap.has(id));
   if (missing.length) {
     await Promise.all(
@@ -329,7 +529,6 @@ export type PublicCollectionItemQuery = {
   limit: number;
 };
 
-/** 单个公开收藏馆：返回资料 + 内容卡片列表（严格隐私过滤）。无公开内容返回 null（404）。 */
 export async function getPublicCollectionBySlug(
   slug: string,
   opts: PublicCollectionItemQuery,
@@ -425,9 +624,7 @@ export async function getPublicCollectionBySlug(
     category: it.categories?.[0] ?? null,
     editionOrCategory: it.editionOrCategory,
     serialNumber: it.serialNumber,
-    cover: it.media[0]
-      ? { itemId: it.id, mediaId: it.media[0].id, url: PUBLIC_MEDIA_URL(it.id, it.media[0].id) }
-      : null,
+    cover: it.media[0] ? { itemId: it.id, mediaId: it.media[0].id, url: PUBLIC_MEDIA_URL(it.id, it.media[0].id) } : null,
   }));
 
   return {
@@ -445,8 +642,6 @@ export async function getPublicCollectionBySlug(
     pagination: { page: opts.page, limit: opts.limit, total, totalPages },
   };
 }
-
-// ---------- 跨收藏馆公开检索（PS-01） ----------
 
 export type PublicItemSearchQuery = {
   q: string;
@@ -471,18 +666,10 @@ export type PublicItemSearchResult = {
   pagination: { page: number; limit: number; total: number; totalPages: number };
 };
 
-/**
- * 跨收藏馆检索公开书籍与文物（PS-01）。
- * 仅返回 APPROVED + isPublic 的内容，封面图片必须是 PUBLIC。
- * q 匹配：题名、作者／来源、年代、分类、版本、收藏编号、收藏馆名称、收藏者公开名称。
- */
 export async function searchPublicCollectionItems(opts: PublicItemSearchQuery): Promise<PublicItemSearchResult> {
   const needle = opts.q.trim();
   const like = `%${needle}%`;
-  const typeFilter = opts.type
-    ? Prisma.sql`AND i."type" = ${opts.type}::personal_item_type`
-    : Prisma.empty;
-  // 收藏馆资料可能缺失（旧用户），故用 LEFT JOIN 并在 COALESCE 中回退到默认名称。
+  const typeFilter = opts.type ? Prisma.sql`AND i."type" = ${opts.type}::personal_item_type` : Prisma.empty;
   const searchFilter = needle
     ? Prisma.sql`AND (
         i."title" ILIKE ${like}
@@ -560,9 +747,7 @@ export async function searchPublicCollectionItems(opts: PublicItemSearchQuery): 
     category: r.category,
     editionOrCategory: r.edition_or_category,
     serialNumber: r.serial_number,
-    cover: r.media_id
-      ? { itemId: r.id, mediaId: r.media_id, url: PUBLIC_MEDIA_URL(r.id, r.media_id) }
-      : null,
+    cover: r.media_id ? { itemId: r.id, mediaId: r.media_id, url: PUBLIC_MEDIA_URL(r.id, r.media_id) } : null,
     collection: {
       slug: r.collection_slug ?? "",
       name: r.collection_name ?? defaultDisplayName(r.owner_display_name),
@@ -571,4 +756,6 @@ export async function searchPublicCollectionItems(opts: PublicItemSearchQuery): 
   }));
 
   return { items, pagination: { page: opts.page, limit: opts.limit, total, totalPages } };
+}
+
 }

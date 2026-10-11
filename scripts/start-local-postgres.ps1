@@ -12,11 +12,15 @@ if (-not (Test-Path -LiteralPath $postgresExe)) {
   throw "PostgreSQL executable not found at $postgresExe. Set POSTGRES_BIN to its bin directory."
 }
 
-$ready = & (Join-Path (Split-Path $postgresExe) "pg_isready.exe") -h 127.0.0.1 -p 5432 2>$null
+$pgIsReady = Join-Path (Split-Path $postgresExe) "pg_isready.exe"
+$ready = & $pgIsReady -h 127.0.0.1 -p 5432 2>$null
 if ($LASTEXITCODE -ne 0) {
   Start-Process -FilePath $postgresExe -ArgumentList @("-D", $dataDir, "-p", "5432") -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError (Join-Path $projectRoot ".local-postgres.err.log") | Out-Null
-  Start-Sleep -Seconds 2
 }
 
-& (Join-Path (Split-Path $postgresExe) "pg_isready.exe") -h 127.0.0.1 -p 5432
-if ($LASTEXITCODE -ne 0) { throw "Local PostgreSQL did not become ready on port 5432." }
+for ($attempt = 0; $attempt -lt 30; $attempt++) {
+  & $pgIsReady -h 127.0.0.1 -p 5432 2>$null
+  if ($LASTEXITCODE -eq 0) { exit 0 }
+  Start-Sleep -Seconds 1
+}
+throw "Local PostgreSQL did not become ready on port 5432."
