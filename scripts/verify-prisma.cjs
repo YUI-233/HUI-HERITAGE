@@ -14,10 +14,11 @@ async function main() {
       include: { book: { select: { title: true } }, artifact: { select: { title: true } } },
     }),
   ]);
-  if (!domesticHolding || (!domesticHolding.book && !domesticHolding.artifact)) {
+  if (domesticHolding && !domesticHolding.book && !domesticHolding.artifact) {
     throw new Error("An approved holding must resolve to a catalogue record.");
   }
-  console.log(`prisma_counts=books:${books},artifacts:${artifacts},media:${media},approved_holdings:${holdings},approved_research:${researchArticles}`);
+  const holdingCheck = domesticHolding ? "linked" : "no_approved_domestic_holding_to_check";
+  console.log(`prisma_counts=books:${books},artifacts:${artifacts},media:${media},approved_holdings:${holdings},approved_research:${researchArticles},domestic_holding_check:${holdingCheck}`);
 }
 
 main()

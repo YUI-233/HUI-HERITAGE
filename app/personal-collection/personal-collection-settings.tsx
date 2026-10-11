@@ -27,28 +27,10 @@ type ProfileItem = {
   media: Array<{ id: string }>;
 };
 
-const PROFILE_STORAGE_KEY = "hui-heritage:personal-collection-profile-draft";
-const ALLOW_PROFILE_MOCK = process.env.NODE_ENV === "development";
 const COLLABORATION_OPTIONS = ["学术研究", "版本鉴定", "数字化合作", "展览借展"];
 
 function splitTerms(value: string) {
   return [...new Set(value.split(/[、，,；;]/).map((item) => item.trim()).filter(Boolean))];
-}
-
-function fallbackProfile(defaultDisplayName: string): CollectionProfile {
-  if (typeof window !== "undefined") {
-    try {
-      const stored = window.localStorage.getItem(PROFILE_STORAGE_KEY);
-      if (stored) return JSON.parse(stored) as CollectionProfile;
-    } catch {
-      // A blocked or malformed local draft should not prevent the settings page from opening.
-    }
-  }
-  return {
-    slug: "pending-backend-slug", displayName: defaultDisplayName, description: null,
-    publicCollectorName: null, themes: [], primaryEras: [], primaryRegion: null,
-    collectingSinceYear: null, originStory: null, collaborationInterests: [], acceptsMessages: null, cover: null,
-  };
 }
 
 async function readJson(response: Response) {
@@ -111,10 +93,10 @@ export function PersonalCollectionSettings({ defaultDisplayName, items }: { defa
       }
       const profileBody = await readJson(profileResponse);
       const optionsBody = await readJson(optionsResponse);
-      if (!profileResponse.ok && (!ALLOW_PROFILE_MOCK || profileResponse.status !== 404)) throw new Error(profileBody.message ?? "暂时无法读取收藏馆设置。");
-      if (!optionsResponse.ok && (!ALLOW_PROFILE_MOCK || optionsResponse.status !== 404)) throw new Error(optionsBody.message ?? "暂时无法读取可选封面。");
-      applyProfile(profileResponse.ok ? profileBody as CollectionProfile : fallbackProfile(defaultDisplayName));
-      setCoverOptions(optionsResponse.ok && Array.isArray(optionsBody.items) ? optionsBody.items : null);
+      if (!profileResponse.ok) throw new Error(profileBody.message ?? "暂时无法读取收藏馆设置。");
+      if (!optionsResponse.ok) throw new Error(optionsBody.message ?? "暂时无法读取可选封面。");
+      applyProfile(profileBody as CollectionProfile);
+      setCoverOptions(Array.isArray(optionsBody.items) ? optionsBody.items : []);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "暂时无法读取收藏馆设置，请稍后重试。");
     } finally {
@@ -186,24 +168,9 @@ export function PersonalCollectionSettings({ defaultDisplayName, items }: { defa
       });
       if (response.status === 401) { setAuthExpired(true); return; }
       const body = await readJson(response);
-      if (!response.ok && (!ALLOW_PROFILE_MOCK || response.status !== 404)) throw new Error(body.message ?? "暂时无法保存收藏馆设置，请稍后重试。");
-      const profile: CollectionProfile = response.ok ? body as CollectionProfile : {
-        slug: saved?.slug ?? "pending-backend-slug",
-        displayName: payload.displayName,
-        description: payload.description || null,
-        publicCollectorName: payload.publicCollectorName,
-        themes: payload.themes,
-        primaryEras: payload.primaryEras,
-        primaryRegion: payload.primaryRegion,
-        collectingSinceYear: payload.collectingSinceYear,
-        originStory: payload.originStory,
-        collaborationInterests: payload.collaborationInterests,
-        acceptsMessages: payload.acceptsMessages,
-        cover: coverMediaId && selectedOption ? { mediaId: selectedOption.mediaId, itemId: selectedOption.itemId, url: selectedOption.url } : null,
-      };
-      if (!response.ok) window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
-      applyProfile(profile);
-      setMessage(response.ok ? "收藏馆设置已保存，公开页面将在刷新后显示最新资料。" : "前端设置已保存为本地预览；后端接口接通后将同步到公开页面。");
+      if (!response.ok) throw new Error(body.message ?? "暂时无法保存收藏馆设置，请稍后重试。");
+      applyProfile(body as CollectionProfile);
+      setMessage("收藏馆设置已保存，公开页面将在刷新后显示最新资料。");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "暂时无法保存收藏馆设置，请稍后重试。");
     } finally {

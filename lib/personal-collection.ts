@@ -2,12 +2,7 @@ import { PersonalItemType, Prisma, ReviewStatus } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { parseCsvDocument } from "./csv";
 import { notifyUsers, publicationReviewers } from "./notifications";
-import { randomUUID } from "node:crypto";
-import { parseCsvDocument } from "./csv";
-import { notifyUsers, publicationReviewers } from "./notifications";
 import { clearCollectionCoverForItem, clearStaleCoverByItem, clearStaleCoverMedia } from "./personal-collection-profile";
-import { prisma } from "./prisma";
-
 import { prisma } from "./prisma";
 
 export type PersonalItemInput = {

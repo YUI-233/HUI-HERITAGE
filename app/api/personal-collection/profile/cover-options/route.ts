@@ -1,5 +1,4 @@
 import { getSignedInUser } from "../../../../../lib/local-auth";
-import { getSignedInUser } from "../../../../../lib/local-auth";
 import { listCoverOptions } from "../../../../../lib/personal-collection-profile";
 
 export const dynamic = "force-dynamic";
@@ -16,8 +15,5 @@ export async function GET(request: Request) {
       { code: "COVER_OPTIONS_READ_FAILED", message: error instanceof Error ? error.message : "无法读取可选封面。" },
       { status: 500 },
     );
-  }
-}
-
   }
 }

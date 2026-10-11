@@ -9,31 +9,6 @@ type ConversationSummary = { id: string; participant: Participant; lastMessage: 
 type ConversationDetail = ConversationSummary & { messages: Message[] };
 type Recipient = { collectionSlug: string; collectionName: string; displayName: string };
 
-const STORAGE_KEY = "hui-heritage:message-center-preview";
-const allowMessageMock = () => process.env.NODE_ENV === "development" || (typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname));
-const initialMock: ConversationDetail[] = [{
-  id: "conversation-preview-1",
-  participant: { displayName: "云水旧藏", collectionSlug: "yun-shui-jiu-cang", collectionName: "云水旧藏" },
-  messages: [
-    { id: "message-preview-1", body: "您好，我在您的公开收藏馆看到了《清真指南》，想请教这册书的版本信息。", sentAt: "2026-09-23T09:20:00.000Z", sender: "SELF" },
-    { id: "message-preview-2", body: "您好，可以的。页面中的版本信息来自书内牌记，我稍后再补充一张细节图。", sentAt: "2026-09-23T10:05:00.000Z", sender: "OTHER" },
-  ],
-  lastMessage: { id: "message-preview-2", body: "您好，可以的。页面中的版本信息来自书内牌记，我稍后再补充一张细节图。", sentAt: "2026-09-23T10:05:00.000Z", sender: "OTHER" },
-  unreadCount: 1,
-  updatedAt: "2026-09-23T10:05:00.000Z",
-}];
-
-function getMockConversations() {
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) as ConversationDetail[] : initialMock;
-  } catch { return initialMock; }
-}
-
-function saveMockConversations(items: ConversationDetail[]) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-}
-
 async function bodyOf(response: Response) { return response.json().catch(() => ({})); }
 function timeLabel(value: string) { return new Intl.DateTimeFormat("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value)); }
 
@@ -53,17 +28,10 @@ export function MessageCenter({ initialRecipient }: { initialRecipient: Recipien
       const response = await fetch("/api/messages/conversations?page=1&limit=50", { cache: "no-store" });
       const body = await bodyOf(response);
       if (response.status === 401) return window.location.assign("/login");
-      if (!response.ok && (!allowMessageMock() || response.status !== 404)) throw new Error(body.message ?? "暂时无法读取站内信。");
-      if (response.ok) {
-        const items = Array.isArray(body.items) ? body.items as ConversationSummary[] : [];
-        setConversations(items);
-        if (!initialRecipient && items[0]) setSelectedId(items[0].id);
-      } else {
-        const mock = getMockConversations();
-        setConversations(mock);
-        setDetails(Object.fromEntries(mock.map((item) => [item.id, item])));
-        if (!initialRecipient && mock[0]) setSelectedId(mock[0].id);
-      }
+      if (!response.ok) throw new Error(body.message ?? "暂时无法读取站内信。");
+      const items = Array.isArray(body.items) ? body.items as ConversationSummary[] : [];
+      setConversations(items);
+      if (!initialRecipient && items[0]) setSelectedId(items[0].id);
     } catch (caught) { setError(caught instanceof Error ? caught.message : "暂时无法读取站内信。"); }
     finally { setLoading(false); }
   }, [initialRecipient]);
@@ -85,10 +53,9 @@ export function MessageCenter({ initialRecipient }: { initialRecipient: Recipien
     }
     if (detail.unreadCount > 0) {
       const response = await fetch(`/api/messages/conversations/${id}/read`, { method: "PATCH" });
-      if (response.ok || (allowMessageMock() && response.status === 404)) {
+      if (response.ok) {
         setConversations((current) => current.map((item) => item.id === id ? { ...item, unreadCount: 0 } : item));
         setDetails((current) => ({ ...current, [id]: { ...detail, unreadCount: 0 } }));
-        if (!response.ok) saveMockConversations(getMockConversations().map((item) => item.id === id ? { ...item, unreadCount: 0 } : item));
       }
     }
   };
@@ -106,30 +73,11 @@ export function MessageCenter({ initialRecipient }: { initialRecipient: Recipien
       const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const body = await bodyOf(response);
       if (response.status === 401) return window.location.assign("/login");
-      if (!response.ok && (!allowMessageMock() || response.status !== 404)) throw new Error(body.message ?? "消息发送失败，请稍后重试。");
-      if (response.ok) {
-        const detail = body as ConversationDetail;
-        setDetails((current) => ({ ...current, [detail.id]: detail }));
-        setConversations((current) => [detail, ...current.filter((item) => item.id !== detail.id)]);
-        setSelectedId(detail.id);
-      } else {
-        const stored = getMockConversations();
-        const message: Message = { id: `message-${Date.now()}`, body: text, sentAt: new Date().toISOString(), sender: "SELF" };
-        let detail: ConversationDetail;
-        if (composeRecipient) {
-          detail = { id: `conversation-${Date.now()}`, participant: { displayName: composeRecipient.displayName, collectionSlug: composeRecipient.collectionSlug, collectionName: composeRecipient.collectionName }, messages: [message], lastMessage: message, unreadCount: 0, updatedAt: message.sentAt };
-          stored.unshift(detail);
-        } else {
-          const index = stored.findIndex((item) => item.id === selectedId);
-          if (index < 0) throw new Error("未找到当前会话。");
-          detail = { ...stored[index], messages: [...stored[index].messages, message], lastMessage: message, updatedAt: message.sentAt };
-          stored.splice(index, 1); stored.unshift(detail);
-        }
-        saveMockConversations(stored);
-        setConversations(stored);
-        setDetails(Object.fromEntries(stored.map((item) => [item.id, item])));
-        setSelectedId(detail.id);
-      }
+      if (!response.ok) throw new Error(body.message ?? "消息发送失败，请稍后重试。");
+      const detail = body as ConversationDetail;
+      setDetails((current) => ({ ...current, [detail.id]: detail }));
+      setConversations((current) => [detail, ...current.filter((item) => item.id !== detail.id)]);
+      setSelectedId(detail.id);
       setComposeRecipient(null); setDraft("");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "消息发送失败，请稍后重试。"); }
     finally { setSending(false); }

@@ -46,7 +46,7 @@ export default async function AccountPage() {
     isAdmin && { href: "/admin/categories", title: "分类管理" },
   ].filter(Boolean) as Entry[];
   const editEntries = (isAdmin
-    ? [{ href: "/admin/hero", title: "首页展示管理" }, { href: "/admin/catalog", title: "古籍文物录入" }, { href: "/admin/holdings", title: "馆藏信息录入" }, { href: "/admin/research", title: "研究资料编辑" }, { href: "/admin/users", title: "账号授权" }]
+    ? [{ href: "/admin/hero", title: "首页展示管理" }, { href: "/admin/catalog", title: "古籍文物录入" }, { href: "/admin/holdings", title: "馆藏信息录入" }, { href: "/admin/research", title: "研究资料编辑" }, { href: "/admin/analytics", title: "访问数据" }, { href: "/admin/users", title: "账号授权" }]
     : [permissions.includes("CATALOG_WRITE") && { href: "/admin/catalog", title: "古籍文物录入" }, permissions.includes("HOLDING_WRITE") && { href: "/admin/holdings", title: "馆藏信息录入" }, permissions.includes("RESEARCH_WRITE") && { href: "/admin/research", title: "研究资料编辑" }].filter(Boolean)) as Entry[];
   const hasManagementModules = editEntries.length > 0 || reviewEntries.length > 0;
   const borrowing = usesCloudRuntime() ? null : await getBorrowingSummary(viewer.id);

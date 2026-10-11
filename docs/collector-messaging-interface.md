@@ -92,5 +92,5 @@ PATCH /api/messages/conversations/:conversationId/read
 
 ## 前端状态
 
-页面位于 `/messages`；公开收藏馆的“联系收藏者”链接使用 `/messages?collection=:slug`。当前开发环境在接口 `404` 时使用 localStorage Mock，接口上线后删除 Mock 回退。
+页面位于 `/messages`；公开收藏馆的“联系收藏者”链接使用 `/messages?collection=:slug`。会话列表、详情、发送和已读均使用真实 API；接口异常时展示错误，不使用本地模拟会话。
 

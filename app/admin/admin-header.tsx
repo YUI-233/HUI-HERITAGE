@@ -17,6 +17,7 @@ const entries: Array<{ href: string; label: string; permission?: UserPermission;
   { href: "/admin/research", label: "研究资料编辑", permission: "RESEARCH_WRITE" },
   { href: "/admin/research-review", label: "研究资料审核", permission: "RESEARCH_REVIEW" },
   { href: "/admin/categories", label: "分类管理", systemAdmin: true },
+  { href: "/admin/analytics", label: "访问数据", systemAdmin: true },
   { href: "/admin/users", label: "账号与权限", systemAdmin: true },
 ];
 

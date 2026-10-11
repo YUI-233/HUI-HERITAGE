@@ -157,26 +157,6 @@ export function serializeCollectionProfile(profile: any) {
   };
 }
 
-  return {
-    slug: profile.slug,
-    displayName: profile.displayName,
-    description: profile.description,
-return {
-    slug: profile.slug,
-    displayName: profile.displayName,
-    description: profile.description,
-    publicCollectorName: profile.publicCollectorName ?? null,
-    themes: profile.themes ?? [],
-    primaryEras: profile.primaryEras ?? [],
-    primaryRegion: profile.primaryRegion ?? null,
-    collectingSinceYear: profile.collectingSinceYear ?? null,
-    originStory: profile.originStory ?? null,
-    collaborationInterests: profile.collaborationInterests ?? [],
-    acceptsMessages: profile.acceptsMessages ?? null,
-    cover,
-  };
-}
-
 async function toProfileResponse(profile: any, ownerId: string): Promise<ProfileResponse> {
   const cover = await resolveCollectionCover(ownerId, profile.coverMediaId);
   return {
@@ -249,7 +229,9 @@ export async function updateProfile(ownerId: string, input: ProfileUpdateInput):
     if (raw.length > 300) throw new ProfileError(400, "收藏馆简介不能超过 300 个字符。");
     data.description = raw || null;
   }
-  if (coverMediaId !== undefined) data.coverMediaId = coverMediaId;
+  if (coverMediaId !== undefined) {
+    data.coverMedia = coverMediaId ? { connect: { id: coverMediaId } } : { disconnect: true };
+  }
 
   const profile = await prisma.personalCollectionProfile.upsert({
     where: { ownerId },
@@ -422,10 +404,6 @@ export async function clearCollectionCoverForItem(ownerId: string, itemId: strin
     where: { ownerId, coverMediaId: { in: media.map((item) => item.id) } },
     data: { coverMediaId: null },
   });
-}
-
-    cover,
-  };
 }
 
 export type PublicCollectionQuery = { q: string; page: number; limit: number };
@@ -756,6 +734,4 @@ export async function searchPublicCollectionItems(opts: PublicItemSearchQuery): 
   }));
 
   return { items, pagination: { page: opts.page, limit: opts.limit, total, totalPages } };
-}
-
 }

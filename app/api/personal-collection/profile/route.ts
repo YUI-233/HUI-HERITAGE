@@ -1,5 +1,4 @@
 import { getSignedInUser } from "../../../../lib/local-auth";
-import { getSignedInUser } from "../../../../lib/local-auth";
 import { getOrCreateProfile, updateProfile, ProfileError } from "../../../../lib/personal-collection-profile";
 
 export const dynamic = "force-dynamic";
@@ -33,15 +32,5 @@ export async function PATCH(request: Request) {
     }
     const message = error instanceof Error ? error.message : "无法保存收藏馆设置，请稍后重试。";
     return Response.json({ code: "PROFILE_SAVE_FAILED", message }, { status: 400 });
-  }
-}
-
-  }
-}
-
-export async function PATCH(request: Request) {
-  }
-}
-
   }
 }

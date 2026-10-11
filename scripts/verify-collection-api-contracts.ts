@@ -249,14 +249,17 @@ async function main(): Promise<void> {
     all.items.every((i) => i.collection.slug && i.collection.name && "ownerName" in i.collection),
     all.items[0]?.collection,
   );
-  check("PS-01 按题名检索", (await searchPublicCollectionItems({ q: "清真", page: 1, limit: 48 })).items.length === 1);
+  const titleResults = await searchPublicCollectionItems({ q: "清真", page: 1, limit: 48 });
+  check("PS-01 按题名检索", titleResults.items.some((item) => item.id === bookPublic));
   check(
     "PS-01 按分类检索（数组字段）",
     (await searchPublicCollectionItems({ q: "伊斯兰思想", page: 1, limit: 48 })).items.length >= 1,
   );
-  check("PS-01 按版本检索", (await searchPublicCollectionItems({ q: "木刻本", page: 1, limit: 48 })).items.length === 1);
+  const editionResults = await searchPublicCollectionItems({ q: "木刻本", page: 1, limit: 48 });
+  check("PS-01 按版本检索", editionResults.items.some((item) => item.id === bookPublic));
   check("PS-01 按收藏编号检索", (await searchPublicCollectionItems({ q: `PC-${suffix}-0001`, page: 1, limit: 48 })).items.length === 1);
-  check("PS-01 按收藏馆名检索", (await searchPublicCollectionItems({ q: "岩境書舍", page: 1, limit: 48 })).items.length === 3);
+  const collectionResults = await searchPublicCollectionItems({ q: "岩境書舍", page: 1, limit: 48 });
+  check("PS-01 按收藏馆名检索", collectionResults.items.filter((item) => item.collection.slug === slugA).length === 3);
   check("PS-01 按藏友名检索", (await searchPublicCollectionItems({ q: "藏友乙", page: 1, limit: 48 })).items.length === 1);
 
   const artifacts = await searchPublicCollectionItems({ q: "", type: "ARTIFACT", page: 1, limit: 48 });

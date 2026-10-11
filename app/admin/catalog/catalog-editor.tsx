@@ -19,7 +19,7 @@ const documentVolume = (storageKey: string, fallback: number) => Number(storageK
 
 const blank = (type: Type = "manuscript"): Form => ({ type, title: "", ...blankManuscriptMetadata(), category: "", era: "", material: "", source: "", keywords: "", status: "DRAFT" });
 
-export function CatalogEditor() {
+export function CatalogEditor({ initialRecordId }: { initialRecordId?: string } = {}) {
   const [mode, setMode] = useState<EntryMode>("create");
   const [form, setForm] = useState<Form>(blank());
   const [media, setMedia] = useState<Media[]>([]);
@@ -39,9 +39,18 @@ export function CatalogEditor() {
   };
   useEffect(() => { if (form.id) void loadMedia(form.id); else setMedia([]); }, [form.id]);
   useEffect(() => { void fetch("/api/admin/catalog?withMedia=1").then(async (response) => {
-    if (response.ok) setRecords(await response.json());
+    if (response.ok) {
+      const loaded: AdminRecord[] = await response.json();
+      setRecords(loaded);
+      const record = loaded.find(item => item.id === initialRecordId);
+      if (record) {
+    setForm({ ...blank(record.type), ...record, id: record.id, catalogNumber: record.catalogNumber, title: record.title, type: record.type, language: record.language || "汉文", author: record.author || "", dynasty: record.dynasty || "", eraDetail: record.eraDetail || "", publicationDate: record.publicationDate || "", imprintPublisher: record.imprintPublisher || "", versionType: record.versionType || "", binding: record.binding || "", volumeCount: record.volumeCount || 1, categories: record.categories || [], category: record.category || "", era: record.era || "", material: record.material || "", description: record.description || "", source: record.source || "", keywords: Array.isArray(record.keywords) ? record.keywords.join("；") : "", status: record.status || "DRAFT" });
+        setMode("edit");
+        setMessage("已打开所选古籍，可查看资料并编辑。");
+      }
+    }
     else setMessage("无法读取可编辑资料，请确认当前账号拥有“录入古籍／文物”权限。");
-  }); }, []);
+  }); }, [initialRecordId]);
   const loadDrafts = async () => {
     const response = await fetch("/api/admin/catalog?drafts=1", { cache: "no-store" });
     const data = await response.json().catch(() => []);

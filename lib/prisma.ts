@@ -5,7 +5,7 @@ import { PrismaClient } from "@prisma/client";
  * It prevents Next's development-module cache from reusing a client generated
  * before the new delegate existed (for example, ImportBatchRecord).
  */
-const clientSchemaVersion = "2026-10-personal-collection-profiles-v1";
+const clientSchemaVersion = "2026-10-visit-events-v1";
 
 const globalForPrisma = globalThis as typeof globalThis & {
   prisma?: PrismaClient;

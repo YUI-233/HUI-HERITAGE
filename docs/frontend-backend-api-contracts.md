@@ -10,7 +10,7 @@
 4. 藏友私信／站内信。
 5. 持有效借阅证导出其他收藏馆的公开书单。
 
-公开收藏馆、收藏馆资料和公开馆藏检索已接通本地 PostgreSQL；书单导出与站内信接口仍待实现。
+公开收藏馆、收藏馆资料、公开馆藏检索、书单导出与站内信接口均已接通本地 PostgreSQL。
 
 ## 2. 接口总览
 
@@ -18,18 +18,18 @@
 | --- | --- | --- | --- | --- | --- |
 | PC-01 | `GET` | `/api/personal-collections` | 否 | 已接通 | 已实现（本地 PostgreSQL） |
 | PC-02 | `GET` | `/api/personal-collections/:slug` | 否 | 已接通 | 已实现（本地 PostgreSQL） |
-| PC-03 | `GET` | `/api/personal-collections/:slug/books/export?format=xlsx` | 是，且需有效借阅证 | 导出入口与下载逻辑完成 | 待实现 |
+| PC-03 | `GET` | `/api/personal-collections/:slug/books/export?format=xlsx` | 是，且需有效借阅证 | 已接通 | 已实现（本地 PostgreSQL；XLSX） |
 | PP-01 | `GET` | `/api/personal-collection/profile` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
 | PP-02 | `GET` | `/api/personal-collection/profile/cover-options` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
 | PP-03 | `PATCH` | `/api/personal-collection/profile` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
 | PS-01 | `GET` | `/api/personal-collections/items` | 否 | 已接通 | 已实现（本地 PostgreSQL） |
-| MSG-01 | `GET` | `/api/messages/conversations` | 是 | 请求代码完成，404 时使用 Mock | 待实现 |
-| MSG-02 | `GET` | `/api/messages/conversations/:conversationId` | 是 | 请求代码完成 | 待实现 |
-| MSG-03 | `POST` | `/api/messages/conversations` | 是 | 请求代码完成，404 时本地保存 | 待实现 |
-| MSG-04 | `POST` | `/api/messages/conversations/:conversationId/messages` | 是 | 请求代码完成，404 时本地保存 | 待实现 |
-| MSG-05 | `PATCH` | `/api/messages/conversations/:conversationId/read` | 是 | 请求代码完成，404 时本地更新 | 待实现 |
+| MSG-01 | `GET` | `/api/messages/conversations` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
+| MSG-02 | `GET` | `/api/messages/conversations/:conversationId` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
+| MSG-03 | `POST` | `/api/messages/conversations` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
+| MSG-04 | `POST` | `/api/messages/conversations/:conversationId/messages` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
+| MSG-05 | `PATCH` | `/api/messages/conversations/:conversationId/read` | 是 | 已接通 | 已实现（本地 PostgreSQL） |
 
-当前剩余：**6 条待实现或待联调接口**（书单导出 1 条、站内信 5 条）。
+当前表内 12 条接口均已实现；PC-03 导出权限与 XLSX 内容验证见 `npm run collection-export:verify`。
 
 ## 3. 通用约定
 
@@ -722,8 +722,7 @@ GET /api/personal-collection/public/:itemId/media/:mediaId
 ## 11. 前端切换真实接口时的清理项
 
 - 删除 `public-collections-data.ts` 中的公开收藏馆、馆页和跨馆检索 Mock。
-- 删除收藏馆设置页的 `localStorage` 资料 Mock。
-- 删除站内信页面的 `localStorage` 会话 Mock。
+- 收藏馆设置和站内信已改为仅使用真实 API；接口异常时显示错误，不再使用 `localStorage` Mock 回退。
 - 保留现有 TypeScript 类型，并以本文响应结构为准。
 - 所有读取接口使用 `cache: "no-store"`，或者由后端提供明确的缓存失效策略。
 - 完成桌面端和手机端的真实数据联调。

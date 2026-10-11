@@ -34,7 +34,6 @@ model User {
   submittedImportBatches           ImportBatch[]              @relation("ImportBatchSubmitter")
   notifications                    Notification[]
   personalItems                    PersonalCollectionItem[]
-  personalCollectionProfile        PersonalCollectionProfile?
   reviewedPersonalItems            PersonalCollectionItem[]   @relation("PersonalItemReviewer")
   reviewedResearchReviewRequests   ResearchReviewRequest[]    @relation("ResearchReviewReviewer")
   submittedResearchReviewRequests  ResearchReviewRequest[]    @relation("ResearchReviewSubmitter")
@@ -132,7 +131,7 @@ model PersonalCollectionProfile {
   coverMediaId           String?     @unique @map("cover_media_id")
   createdAt              DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  owner                  User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner                  User        @relation("UserPersonalCollectionProfile", fields: [ownerId], references: [id], onDelete: Cascade)
   coverMedia             MediaAsset? @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
 
   @@map("personal_collection_profiles")
@@ -557,21 +556,6 @@ enum WorkflowLane {
   @@map("workflow_lane")
 }
 
-model PersonalCollectionProfile {
-  id            String   @id @default(cuid())
-  ownerId       String   @unique @map("owner_id")
-  slug          String   @unique
-  displayName   String   @map("display_name")
-  description   String?
-  coverMediaId  String?  @map("cover_media_id")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
-  owner         User     @relation("UserPersonalCollectionProfile", fields: [ownerId], references: [id], onDelete: Cascade)
-
-  @@index([slug])
-  @@map("personal_collection_profiles")
-}
-
 /// 一对一站内信会话。参与者按字典序存储（one < two），确保两人之间只有一条会话。
 model Conversation {
   id               String    @id @default(cuid())
@@ -604,4 +588,23 @@ model Message {
   @@index([conversationId, createdAt])
   @@index([conversationId, senderId, readAt])
   @@map("messages")
+}
+
+
+/// Anonymous visit identifiers are independent from authenticated user identifiers.
+model VisitEvent {
+  id          String   @id
+  visitorKey  String   @map("visitor_key")
+  sessionKey  String   @map("session_key")
+  userType    String   @map("user_type")
+  path        String
+  title       String
+  contentType String   @default("PAGE") @map("content_type")
+  contentId   String?  @map("content_id")
+  source      String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt, userType])
+  @@index([contentType, contentId, createdAt])
+  @@map("visit_events")
 }
