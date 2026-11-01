@@ -1,0 +1,40 @@
+name: Build Linux release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.1
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx prisma generate
+      - run: npm run build:postgres
+      - name: Package Linux release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s .next/BUILD_ID
+          mkdir -p release
+          cp -a .next node_modules public prisma package.json package-lock.json next.config.ts release/
+          printf '%s\n' "$GITHUB_SHA" > release/REVISION
+          tar -czf huiheritage-linux-release.tar.gz -C release .
+          sha256sum huiheritage-linux-release.tar.gz > huiheritage-linux-release.tar.gz.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: huiheritage-linux-${{ github.sha }}
+          path: |
+            huiheritage-linux-release.tar.gz
+            huiheritage-linux-release.tar.gz.sha256
+          retention-days: 7
